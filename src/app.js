@@ -20,4 +20,6 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/v1/test', require('./routes/test.routes'));
+app.use('/api/v1/protected', require('./routes/protected.routes'));
+
 module.exports = app;
