@@ -51,3 +51,17 @@ exports.registerUser = async (req, res) => {
     });
   }
 };
+
+exports.getCurrentUser = async (req, res) => {
+  try {
+    res.status(200).json({
+      success: true,
+      data: req.user,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
