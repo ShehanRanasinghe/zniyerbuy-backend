@@ -3,6 +3,9 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 
+const notFound = require('./middleware/notFound');
+const errorHandler = require('./middleware/errorHandler');
+
 const app = express();
 
 // Middlewares
@@ -22,5 +25,8 @@ app.get('/health', (req, res) => {
 app.use('/api/v1/auth', require('./routes/auth.routes'));
 app.use('/api/v1/test', require('./routes/test.routes'));
 app.use('/api/v1/protected', require('./routes/protected.routes'));
+
+app.use(notFound);
+app.use(errorHandler);
 
 module.exports = app;
