@@ -42,3 +42,31 @@ exports.createProduct = async (req, res) => {
     });
   }
 };
+
+exports.getProducts = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select(`
+        *,
+        shops (
+          id,
+          name
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      count: data.length,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};

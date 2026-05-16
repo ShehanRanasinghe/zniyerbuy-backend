@@ -10,7 +10,10 @@ const {
 
 const {
   createProduct,
+  getProducts,
 } = require('../controllers/product.controller');
+
+router.get('/', getProducts);
 
 router.post(
   '/',
