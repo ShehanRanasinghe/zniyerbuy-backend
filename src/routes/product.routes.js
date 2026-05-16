@@ -11,7 +11,10 @@ const {
 const {
   createProduct,
   getProducts,
+  searchProducts,
 } = require('../controllers/product.controller');
+
+router.get('/search', searchProducts);
 
 router.get('/', getProducts);
 
