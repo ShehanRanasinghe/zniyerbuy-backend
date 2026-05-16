@@ -10,7 +10,10 @@ const {
 
 const {
   createShop,
+  getNearbyShops,
 } = require('../controllers/shop.controller');
+
+router.get('/nearby', getNearbyShops);
 
 router.post(
   '/',
