@@ -101,3 +101,35 @@ exports.searchProducts = async (req, res) => {
     });
   }
 };
+
+exports.getProductById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data, error } = await supabase
+      .from('products')
+      .select(`
+        *,
+        shops (
+          id,
+          name,
+          address,
+          contact_number
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};

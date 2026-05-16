@@ -12,9 +12,12 @@ const {
   createProduct,
   getProducts,
   searchProducts,
+  getProductById,
 } = require('../controllers/product.controller');
 
 router.get('/search', searchProducts);
+
+router.get('/:id', getProductById);
 
 router.get('/', getProducts);
 
