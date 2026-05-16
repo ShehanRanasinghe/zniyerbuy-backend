@@ -10,7 +10,10 @@ const {
 
 const {
   addFavorite,
+  getFavorites,
 } = require('../controllers/favorite.controller');
+
+router.get('/', protect, getFavorites);
 
 router.post(
   '/',
