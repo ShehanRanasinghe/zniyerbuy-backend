@@ -10,7 +10,10 @@ const {
 
 const {
   createDeal,
+  getDeals,
 } = require('../controllers/deal.controller');
+
+router.get('/', getDeals);
 
 router.post(
   '/',
