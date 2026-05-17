@@ -63,3 +63,40 @@ exports.getNearbyShops = async (req, res) => {
     });
   }
 };
+
+exports.getShopById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data, error } = await supabase
+      .from('shops')
+      .select(`
+        *,
+        products (
+          id,
+          product_name,
+          price,
+          image_url
+        ),
+        deals (
+          id,
+          title,
+          discount_percentage
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};

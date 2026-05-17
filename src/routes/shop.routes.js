@@ -11,9 +11,12 @@ const {
 const {
   createShop,
   getNearbyShops,
+  getShopById,
 } = require('../controllers/shop.controller');
 
 router.get('/nearby', getNearbyShops);
+
+router.get('/:id', getShopById);
 
 router.post(
   '/',
