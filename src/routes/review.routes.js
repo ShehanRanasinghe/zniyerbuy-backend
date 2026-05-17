@@ -10,7 +10,10 @@ const {
 
 const {
   createReview,
+  getShopReviews,
 } = require('../controllers/review.controller');
+
+router.get('/shop/:shopId', getShopReviews);
 
 router.post(
   '/',
