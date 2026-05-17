@@ -29,6 +29,7 @@ app.use('/api/v1/shops', require('./routes/shop.routes'));
 app.use('/api/v1/products', require('./routes/product.routes'));
 app.use('/api/v1/deals', require('./routes/deal.routes'));
 app.use('/api/v1/favorites', require('./routes/favorite.routes'));
+app.use('/api/v1/reviews', require('./routes/review.routes'));
 
 app.use(notFound);
 app.use(errorHandler);
