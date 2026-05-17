@@ -10,7 +10,10 @@ const {
 
 const {
   createNotification,
+  getUserNotifications,
 } = require('../controllers/notification.controller');
+
+router.get('/', protect, getUserNotifications);
 
 router.post(
   '/',
