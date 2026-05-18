@@ -22,6 +22,15 @@ app.get('/health', (req, res) => {
   });
 });
 
+app.get('/api/v1', (req, res) => {
+  res.status(200).json({
+    success: true,
+    project: 'ZNIYERBUY API',
+    version: 'v1',
+    status: 'running',
+  });
+});
+
 app.use('/api/v1/auth', require('./routes/auth.routes'));
 app.use('/api/v1/test', require('./routes/test.routes'));
 app.use('/api/v1/protected', require('./routes/protected.routes'));
