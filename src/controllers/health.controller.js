@@ -3,6 +3,6 @@ exports.healthCheck = (req, res) => {
     success: true,
     status: 'healthy',
     uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
+    timestamp: req.requestTime,
   });
 };

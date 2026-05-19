@@ -9,6 +9,8 @@ const compression = require('compression');
 const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
 
+const requestTime = require('./middleware/requestTime');
+
 const app = express();
 
 // Middlewares
@@ -26,6 +28,9 @@ app.use(limiter);
 
 app.use(cors());
 app.use(morgan('dev'));
+
+app.use(requestTime);
+
 app.use(express.json({ limit: '10mb' }));
 
 // Health check route
