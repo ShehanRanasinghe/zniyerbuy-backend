@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const asyncHandler = require('../utils/asyncHandler');
 
 exports.createProduct = async (req, res) => {
   try {
@@ -43,7 +44,7 @@ exports.createProduct = async (req, res) => {
   }
 };
 
-exports.getProducts = async (req, res) => {
+exports.getProducts = asyncHandler(async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('products')
@@ -69,7 +70,7 @@ exports.getProducts = async (req, res) => {
       error: err.message,
     });
   }
-};
+});
 
 exports.searchProducts = async (req, res) => {
   try {
