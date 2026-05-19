@@ -1,7 +1,7 @@
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
 
-exports.createProduct = async (req, res) => {
+exports.createProduct = asyncHandler(async (req, res) => {
   try {
     const {
       shop_id,
@@ -42,7 +42,7 @@ exports.createProduct = async (req, res) => {
       error: err.message,
     });
   }
-};
+});
 
 exports.getProducts = asyncHandler(async (req, res) => {
   try {

@@ -1,6 +1,7 @@
 const supabase = require('../config/supabase');
+const asyncHandler = require('../utils/asyncHandler');
 
-exports.trackInteraction = async (req, res) => {
+exports.trackInteraction = asyncHandler(async (req, res) => {
   try {
     const {
       product_id,
@@ -32,4 +33,4 @@ exports.trackInteraction = async (req, res) => {
       error: err.message,
     });
   }
-};
+});

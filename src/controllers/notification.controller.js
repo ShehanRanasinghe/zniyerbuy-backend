@@ -1,6 +1,7 @@
 const supabase = require('../config/supabase');
+const asyncHandler = require('../utils/asyncHandler');
 
-exports.createNotification = async (req, res) => {
+exports.createNotification = asyncHandler(async (req, res) => {
   try {
     const {
       user_id,
@@ -35,7 +36,7 @@ exports.createNotification = async (req, res) => {
       error: err.message,
     });
   }
-};
+});
 
 exports.getUserNotifications = async (req, res) => {
   try {

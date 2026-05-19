@@ -1,6 +1,7 @@
 const supabase = require('../config/supabase');
+const asyncHandler = require('../utils/asyncHandler');
 
-exports.createReview = async (req, res) => {
+exports.createReview = asyncHandler(async (req, res) => {
   try {
     const {
       shop_id,
@@ -34,7 +35,7 @@ exports.createReview = async (req, res) => {
       error: err.message,
     });
   }
-};
+});
 
 exports.getShopReviews = async (req, res) => {
   try {

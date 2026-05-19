@@ -1,6 +1,7 @@
 const supabase = require('../config/supabase');
+const asyncHandler = require('../utils/asyncHandler');
 
-exports.registerUser = async (req, res) => {
+exports.registerUser = asyncHandler(async (req, res) => {
   try {
     const {
       firebase_uid,
@@ -50,7 +51,7 @@ exports.registerUser = async (req, res) => {
       error: err.message,
     });
   }
-};
+});
 
 exports.getCurrentUser = async (req, res) => {
   try {

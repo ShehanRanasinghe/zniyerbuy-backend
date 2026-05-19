@@ -1,6 +1,7 @@
 const supabase = require('../config/supabase');
+const asyncHandler = require('../utils/asyncHandler');
 
-exports.addFavorite = async (req, res) => {
+exports.addFavorite = asyncHandler(async (req, res) => {
   try {
     const { product_id } = req.body;
 
@@ -28,7 +29,7 @@ exports.addFavorite = async (req, res) => {
       error: err.message,
     });
   }
-};
+});
 
 exports.getFavorites = async (req, res) => {
   try {
