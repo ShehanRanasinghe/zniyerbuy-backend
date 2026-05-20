@@ -52,6 +52,7 @@ exports.getProducts = asyncHandler(async (req, res) => {
   const to = from + limit - 1;
   const category = req.query.category;
   const sort = req.query.sort || 'newest';
+  const keyword = req.query.keyword;
 
   try {
     let query = supabase
@@ -66,6 +67,10 @@ exports.getProducts = asyncHandler(async (req, res) => {
 
     if (category) {
       query = query.eq('category', category);
+    }
+
+    if (keyword) {
+      query = query.ilike('product_name', `%${keyword}%`);
     }
 
     let orderField = 'created_at';
