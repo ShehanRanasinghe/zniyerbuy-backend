@@ -51,6 +51,7 @@ exports.getProducts = asyncHandler(async (req, res) => {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
   const category = req.query.category;
+  const sort = req.query.sort || 'newest';
 
   try {
     let query = supabase
@@ -67,8 +68,22 @@ exports.getProducts = asyncHandler(async (req, res) => {
       query = query.eq('category', category);
     }
 
+    let orderField = 'created_at';
+    let ascending = false;
+
+    if (sort === 'price_asc') {
+      orderField = 'price';
+      ascending = true;
+    }
+
+    if (sort === 'price_desc') {
+      orderField = 'price';
+      ascending = false;
+    }
+
     const { data, error } = await query
-      .order('created_at', { ascending: false }).range(from, to);
+      .order(orderField, { ascending })
+      .range(from, to);
 
     if (error) throw error;
 
