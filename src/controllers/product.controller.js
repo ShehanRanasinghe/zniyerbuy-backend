@@ -50,9 +50,10 @@ exports.getProducts = asyncHandler(async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const from = (page - 1) * limit;
   const to = from + limit - 1;
+  const category = req.query.category;
 
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('products')
       .select(`
         *,
@@ -60,7 +61,13 @@ exports.getProducts = asyncHandler(async (req, res) => {
           id,
           name
         )
-      `)
+      `);
+
+    if (category) {
+      query = query.eq('category', category);
+    }
+
+    const { data, error } = await query
       .order('created_at', { ascending: false }).range(from, to);
 
     if (error) throw error;
