@@ -45,6 +45,12 @@ exports.createProduct = asyncHandler(async (req, res) => {
 });
 
 exports.getProducts = asyncHandler(async (req, res) => {
+
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
   try {
     const { data, error } = await supabase
       .from('products')
@@ -55,12 +61,14 @@ exports.getProducts = asyncHandler(async (req, res) => {
           name
         )
       `)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false }).range(from, to);
 
     if (error) throw error;
 
     res.status(200).json({
       success: true,
+      page,
+      limit,
       count: data.length,
       data,
     });
