@@ -4,6 +4,8 @@ const router = express.Router();
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 
+const authorize = require('../middleware/authorize');
+
 const {
   createShopValidator,
 } = require('../validators/shop.validator');
@@ -21,6 +23,7 @@ router.get('/:id', getShopById);
 router.post(
   '/',
   protect,
+  authorize('shop_owner', 'admin'),
   createShopValidator,
   validate,
   createShop

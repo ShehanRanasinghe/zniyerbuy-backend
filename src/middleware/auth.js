@@ -29,7 +29,11 @@ exports.protect = async (req, res, next) => {
       });
     }
 
-    req.user = user;
+    req.user = {
+      id: decoded.uid,
+      email: decoded.email,
+      role: decoded.role || 'customer',
+    };
 
     next();
   } catch (err) {
