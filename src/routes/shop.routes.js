@@ -6,6 +6,8 @@ const validate = require('../middleware/validate');
 
 const authorize = require('../middleware/authorize');
 
+const checkShopOwnership = require('../middleware/checkShopOwnership');
+
 const {
   createShopValidator,
 } = require('../validators/shop.validator');
@@ -27,6 +29,7 @@ router.patch(
   '/:id/image',
   protect,
   authorize('shop_owner', 'admin'),
+  checkShopOwnership,
   updateProductImageValidator,
   validate,
   updateShopImage
