@@ -11,12 +11,26 @@ const {
 } = require('../validators/shop.validator');
 
 const {
+  updateProductImageValidator,
+} = require('../validators/upload.validator');
+
+const {
   createShop,
   getNearbyShops,
   getShopById,
+  updateShopImage,
 } = require('../controllers/shop.controller');
 
 router.get('/nearby', getNearbyShops);
+
+router.patch(
+  '/:id/image',
+  protect,
+  authorize('shop_owner', 'admin'),
+  updateProductImageValidator,
+  validate,
+  updateShopImage
+);
 
 router.get('/:id', getShopById);
 
