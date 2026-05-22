@@ -6,6 +6,7 @@ const { protect } = require('../middleware/auth');
 
 const {
   uploadProductImage,
+  uploadShopImage,
 } = require('../controllers/upload.controller');
 
 router.post(
@@ -13,6 +14,13 @@ router.post(
   protect,
   upload.single('image'),
   uploadProductImage
+);
+
+router.post(
+  '/shop-image',
+  protect,
+  upload.single('image'),
+  uploadShopImage
 );
 
 module.exports = router;
