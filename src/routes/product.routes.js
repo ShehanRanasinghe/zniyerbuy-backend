@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const { protect } = require('../middleware/auth');
+const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
 
 const {
@@ -9,13 +10,27 @@ const {
 } = require('../validators/product.validator');
 
 const {
+  updateProductImageValidator,
+} = require('../validators/upload.validator');
+
+const {
   createProduct,
   getProducts,
   searchProducts,
   getProductById,
+  updateProductImage,
 } = require('../controllers/product.controller');
 
 router.get('/search', searchProducts);
+
+router.patch(
+  '/:id/image',
+  protect,
+  authorize('shop_owner', 'admin'),
+  updateProductImageValidator,
+  validate,
+  updateProductImage
+);
 
 router.get('/:id', getProductById);
 

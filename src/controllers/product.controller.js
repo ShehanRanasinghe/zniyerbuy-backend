@@ -169,3 +169,32 @@ exports.getProductById = async (req, res) => {
     });
   }
 };
+
+exports.updateProductImage = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { image_url } = req.body;
+
+    const { data, error } = await supabase
+      .from('products')
+      .update({
+        image_url,
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: 'Product image updated successfully',
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
