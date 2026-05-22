@@ -62,6 +62,7 @@ app.use('/api/v1/notifications', require('./routes/notification.routes'));
 app.use('/api/v1/interactions', require('./routes/interaction.routes'));
 app.use('/api/v1/docs', require('./routes/docs.routes'));
 app.use('/api/v1/health', require('./routes/health.routes'));
+app.use('/api/v1/uploads', require('./routes/upload.routes'));
 
 app.use(notFound);
 app.use(errorHandler);
