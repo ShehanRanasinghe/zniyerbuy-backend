@@ -107,6 +107,38 @@ exports.getProducts = asyncHandler(async (req, res) => {
   }
 });
 
+exports.getTrendingProducts = asyncHandler(async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+
+    const { data, error } = await supabase
+      .from('products')
+      .select(`
+        *,
+        shops (
+          id,
+          name,
+          address
+        )
+      `)
+      .order('views', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      count: data.length,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
 exports.searchProducts = async (req, res) => {
   try {
     const { q } = req.query;

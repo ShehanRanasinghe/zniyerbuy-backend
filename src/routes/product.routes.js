@@ -20,7 +20,10 @@ const {
   searchProducts,
   getProductById,
   updateProductImage,
+  getTrendingProducts,
 } = require('../controllers/product.controller');
+
+router.get('/trending', getTrendingProducts);
 
 router.get('/search', searchProducts);
 
