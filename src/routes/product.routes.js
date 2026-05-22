@@ -4,6 +4,7 @@ const router = express.Router();
 const { protect } = require('../middleware/auth');
 const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
+const checkProductOwnership = require('../middleware/checkProductOwnership');
 
 const {
   createProductValidator,
@@ -27,6 +28,7 @@ router.patch(
   '/:id/image',
   protect,
   authorize('shop_owner', 'admin'),
+  checkProductOwnership,
   updateProductImageValidator,
   validate,
   updateProductImage
