@@ -174,6 +174,10 @@ exports.getProductById = async (req, res) => {
   try {
     const { id } = req.params;
 
+    await supabase.rpc('increment_product_views', {
+      product_id: req.params.id,
+    });
+
     const { data, error } = await supabase
       .from('products')
       .select(`
