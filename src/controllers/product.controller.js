@@ -139,6 +139,35 @@ exports.getTrendingProducts = asyncHandler(async (req, res) => {
   }
 });
 
+exports.getRecentlyViewedProducts = asyncHandler(async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('recently_viewed')
+      .select(`
+        viewed_at,
+        products (
+          *
+        )
+      `)
+      .eq('user_id', req.user.id)
+      .order('viewed_at', { ascending: false })
+      .limit(10);
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      count: data.length,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
 exports.searchProducts = async (req, res) => {
   try {
     const { q } = req.query;
@@ -177,6 +206,15 @@ exports.getProductById = async (req, res) => {
     await supabase.rpc('increment_product_views', {
       product_id: req.params.id,
     });
+
+    if (req.user) {
+      await supabase
+        .from('recently_viewed')
+        .insert({
+          user_id: req.user.id,
+          product_id: req.params.id,
+        });
+    }
 
     const { data, error } = await supabase
       .from('products')
