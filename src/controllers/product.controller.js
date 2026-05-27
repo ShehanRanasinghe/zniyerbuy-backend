@@ -121,6 +121,7 @@ exports.getTrendingProducts = asyncHandler(async (req, res) => {
           address
         )
       `)
+      .order('favorites_count', { ascending: false })
       .order('views', { ascending: false })
       .limit(limit);
 

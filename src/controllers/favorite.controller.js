@@ -18,6 +18,8 @@ exports.addFavorite = asyncHandler(async (req, res) => {
 
     if (error) throw error;
 
+    await supabase.rpc('increment_product_favorites', {product_id,});
+
     res.status(201).json({
       success: true,
       message: 'Added to favorites',
