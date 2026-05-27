@@ -24,6 +24,8 @@ exports.createReview = asyncHandler(async (req, res) => {
 
     if (error) throw error;
 
+    await supabase.rpc('update_product_rating', {product_id,});
+
     res.status(201).json({
       success: true,
       message: 'Review added successfully',
