@@ -25,7 +25,10 @@ const {
   getRecommendedProducts,
   getInterestBasedRecommendations,
   getSearchSuggestions,
+  getHomeFeed,
 } = require('../controllers/product.controller');
+
+router.get('/home-feed',protect,getHomeFeed);
 
 router.get('/interest-based',protect,getInterestBasedRecommendations);
 

@@ -263,6 +263,56 @@ exports.getInterestBasedRecommendations = asyncHandler(async (req, res) => {
   }
 });
 
+exports.getHomeFeed = asyncHandler(async (req, res) => {
+  try {
+    const { data: interests } = await supabase
+      .from('user_interests')
+      .select('category')
+      .eq('user_id', req.user.id)
+      .order('score', { ascending: false })
+      .limit(5);
+
+    const categories = interests.map(
+      (item) => item.category
+    );
+
+    let query = supabase
+      .from('products')
+      .select(`
+        *,
+        shops (
+          id,
+          name,
+          address
+        )
+      `)
+      .order('recommendation_score', {
+        ascending: false,
+      })
+      .limit(20);
+
+    if (categories.length > 0) {
+      query = query.in('category', categories);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      interests: categories,
+      count: data.length,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
 exports.searchProducts = async (req, res) => {
   try {
     const { q } = req.query;
