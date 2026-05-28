@@ -132,3 +132,40 @@ exports.getTopProducts = asyncHandler(async (req, res) => {
     });
   }
 });
+
+exports.getTopCategories = asyncHandler(async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('category');
+
+    if (error) throw error;
+
+    const categoryMap = {};
+
+    data.forEach((product) => {
+      const category = product.category || 'Unknown';
+
+      categoryMap[category] =
+        (categoryMap[category] || 0) + 1;
+    });
+
+    const result = Object.entries(categoryMap)
+      .map(([category, count]) => ({
+        category,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    res.status(200).json({
+      success: true,
+      count: result.length,
+      data: result,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});

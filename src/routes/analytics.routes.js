@@ -8,6 +8,7 @@ const {
   getDashboardStats,
   getSellerStats,
   getTopProducts,
+  getTopCategories,
 } = require('../controllers/analytics.controller');
 
 router.get(
@@ -29,6 +30,13 @@ router.get(
   protect,
   authorize('shop_owner', 'admin'),
   getTopProducts
+);
+
+router.get(
+  '/top-categories',
+  protect,
+  authorize('admin'),
+  getTopCategories
 );
 
 module.exports = router;
