@@ -171,6 +171,53 @@ exports.getRecentlyViewedProducts = asyncHandler(async (req, res) => {
   }
 });
 
+exports.getRecommendedProducts = asyncHandler(async (req, res) => {
+  try {
+    const { data: viewedProducts } = await supabase
+      .from('recently_viewed')
+      .select('product_id')
+      .eq('user_id', req.user.id);
+
+    const viewedIds = viewedProducts.map(
+      (item) => item.product_id
+    );
+
+    let query = supabase
+      .from('products')
+      .select(`
+        *,
+        shops (
+          id,
+          name,
+          address
+        )
+      `)
+      .order('recommendation_score', {
+        ascending: false,
+      })
+      .limit(10);
+
+    if (viewedIds.length > 0) {
+      query = query.not('id', 'in', `(${viewedIds.join(',')})`);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      count: data.length,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
 exports.searchProducts = async (req, res) => {
   try {
     const { q } = req.query;

@@ -22,7 +22,10 @@ const {
   updateProductImage,
   getTrendingProducts,
   getRecentlyViewedProducts,
+  getRecommendedProducts,
 } = require('../controllers/product.controller');
+
+router.get('/recommended',protect,getRecommendedProducts);
 
 router.get( '/recently-viewed',protect,getRecentlyViewedProducts);
 
