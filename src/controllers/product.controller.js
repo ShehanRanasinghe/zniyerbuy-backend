@@ -294,6 +294,42 @@ exports.searchProducts = async (req, res) => {
   }
 };
 
+exports.getSearchSuggestions = asyncHandler(async (req, res) => {
+  try {
+    const query = req.query.q || '';
+
+    if (!query.trim()) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+      });
+    }
+
+    const { data, error } = await supabase
+      .from('products')
+      .select('name')
+      .ilike('name', `%${query}%`)
+      .limit(10);
+
+    if (error) throw error;
+
+    const suggestions = [
+      ...new Set(data.map((item) => item.name)),
+    ];
+
+    res.status(200).json({
+      success: true,
+      count: suggestions.length,
+      data: suggestions,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
 exports.getProductById = async (req, res) => {
   try {
     const { id } = req.params;
