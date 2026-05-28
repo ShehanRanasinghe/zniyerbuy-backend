@@ -11,6 +11,8 @@ const errorHandler = require('./middleware/errorHandler');
 
 const requestTime = require('./middleware/requestTime');
 
+const apiLimiter = require('./middleware/rateLimiter');
+
 const app = express();
 
 // Middlewares
@@ -64,6 +66,7 @@ app.use('/api/v1/docs', require('./routes/docs.routes'));
 app.use('/api/v1/health', require('./routes/health.routes'));
 app.use('/api/v1/uploads', require('./routes/upload.routes'));
 app.use('/api/v1/analytics', require('./routes/analytics.routes'));
+app.use('/api', apiLimiter);
 
 app.use(notFound);
 app.use(errorHandler);
