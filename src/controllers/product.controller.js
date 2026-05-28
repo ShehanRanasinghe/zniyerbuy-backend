@@ -124,6 +124,7 @@ exports.getTrendingProducts = asyncHandler(async (req, res) => {
       .order('average_rating', { ascending: false })
       .order('favorites_count', { ascending: false })
       .order('views', { ascending: false })
+      .order('recommendation_score', { ascending: false })
       .limit(limit);
 
     if (error) throw error;
@@ -206,6 +207,10 @@ exports.getProductById = async (req, res) => {
     const { id } = req.params;
 
     await supabase.rpc('increment_product_views', {
+      product_id: req.params.id,
+    });
+
+    await supabase.rpc('update_recommendation_score', {
       product_id: req.params.id,
     });
 
