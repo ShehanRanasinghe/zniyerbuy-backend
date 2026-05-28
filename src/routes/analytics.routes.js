@@ -7,6 +7,7 @@ const authorize = require('../middleware/authorize');
 const {
   getDashboardStats,
   getSellerStats,
+  getTopProducts,
 } = require('../controllers/analytics.controller');
 
 router.get(
@@ -21,6 +22,13 @@ router.get(
   protect,
   authorize('shop_owner', 'admin'),
   getSellerStats
+);
+
+router.get(
+  '/seller/top-products',
+  protect,
+  authorize('shop_owner', 'admin'),
+  getTopProducts
 );
 
 module.exports = router;

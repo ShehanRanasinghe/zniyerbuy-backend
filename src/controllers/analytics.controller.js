@@ -89,3 +89,46 @@ exports.getSellerStats = asyncHandler(async (req, res) => {
     });
   }
 });
+
+exports.getTopProducts = asyncHandler(async (req, res) => {
+  try {
+    const ownerId = req.user.id;
+
+    const { data: shops } = await supabase
+      .from('shops')
+      .select('id')
+      .eq('owner_id', ownerId);
+
+    const shopIds = shops.map((shop) => shop.id);
+
+    const { data, error } = await supabase
+      .from('products')
+      .select(`
+        id,
+        name,
+        views,
+        favorites_count,
+        average_rating,
+        recommendation_score,
+        shop_id
+      `)
+      .in('shop_id', shopIds)
+      .order('recommendation_score', {
+        ascending: false,
+      })
+      .limit(10);
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      count: data.length,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
