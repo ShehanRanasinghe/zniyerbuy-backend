@@ -218,6 +218,51 @@ exports.getRecommendedProducts = asyncHandler(async (req, res) => {
   }
 });
 
+exports.getInterestBasedRecommendations = asyncHandler(async (req, res) => {
+  try {
+    const { data: interests } = await supabase
+      .from('user_interests')
+      .select('category')
+      .eq('user_id', req.user.id)
+      .order('score', { ascending: false })
+      .limit(3);
+
+    const categories = interests.map(
+      (item) => item.category
+    );
+
+    const { data, error } = await supabase
+      .from('products')
+      .select(`
+        *,
+        shops (
+          id,
+          name,
+          address
+        )
+      `)
+      .in('category', categories)
+      .order('recommendation_score', {
+        ascending: false,
+      })
+      .limit(10);
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      interests: categories,
+      count: data.length,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
 exports.searchProducts = async (req, res) => {
   try {
     const { q } = req.query;
@@ -285,6 +330,13 @@ exports.getProductById = async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    if (req.user && data?.category) {
+      await supabase.rpc('update_user_interest', {
+        p_user_id: req.user.id,
+        p_category: data.category,
+      });
+    }
 
     res.status(200).json({
       success: true,

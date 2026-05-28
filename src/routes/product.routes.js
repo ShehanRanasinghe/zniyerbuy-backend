@@ -23,7 +23,10 @@ const {
   getTrendingProducts,
   getRecentlyViewedProducts,
   getRecommendedProducts,
+  getInterestBasedRecommendations,
 } = require('../controllers/product.controller');
+
+router.get('/interest-based',protect,getInterestBasedRecommendations);
 
 router.get('/recommended',protect,getRecommendedProducts);
 
