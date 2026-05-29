@@ -317,6 +317,15 @@ exports.searchProducts = async (req, res) => {
   try {
     const { q } = req.query;
 
+    if (req.user && keyword?.trim()) {
+      await supabase
+        .from('search_history')
+        .insert({
+          user_id: req.user.id,
+          keyword,
+        });
+    }
+
     const { data, error } = await supabase
       .from('products')
       .select(`
@@ -371,6 +380,32 @@ exports.getSearchSuggestions = asyncHandler(async (req, res) => {
       success: true,
       count: suggestions.length,
       data: suggestions,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
+exports.getSearchHistory = asyncHandler(async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('search_history')
+      .select('keyword, searched_at')
+      .eq('user_id', req.user.id)
+      .order('searched_at', {
+        ascending: false,
+      })
+      .limit(10);
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      count: data.length,
+      data,
     });
   } catch (err) {
     res.status(500).json({

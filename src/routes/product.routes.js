@@ -26,6 +26,7 @@ const {
   getInterestBasedRecommendations,
   getSearchSuggestions,
   getHomeFeed,
+  getSearchHistory,
 } = require('../controllers/product.controller');
 
 router.get('/home-feed',protect,getHomeFeed);
@@ -37,6 +38,8 @@ router.get('/recommended',protect,getRecommendedProducts);
 router.get( '/recently-viewed',protect,getRecentlyViewedProducts);
 
 router.get('/trending', getTrendingProducts);
+
+router.get('/search-history',protect,getSearchHistory);
 
 router.get('/suggestions', getSearchSuggestions);
 
