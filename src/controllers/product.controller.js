@@ -313,6 +313,57 @@ exports.getHomeFeed = asyncHandler(async (req, res) => {
   }
 });
 
+exports.getSimilarProducts = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data: currentProduct, error: currentError } =
+      await supabase
+        .from('products')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (currentError || !currentProduct) {
+      return res.status(404).json({
+        success: false,
+        error: 'Product not found',
+      });
+    }
+
+    const { data, error } = await supabase
+      .from('products')
+      .select(`
+        *,
+        shops (
+          id,
+          name,
+          address
+        )
+      `)
+      .eq('category', currentProduct.category)
+      .neq('id', id)
+      .order('recommendation_score', {
+        ascending: false,
+      })
+      .limit(10);
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      category: currentProduct.category,
+      count: data.length,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
 exports.searchProducts = async (req, res) => {
   try {
     const { q } = req.query;

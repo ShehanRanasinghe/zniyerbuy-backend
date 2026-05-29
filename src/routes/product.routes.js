@@ -28,6 +28,7 @@ const {
   getHomeFeed,
   getSearchHistory,
   getTrendingSearches,
+  getSimilarProducts,
 } = require('../controllers/product.controller');
 
 router.get('/home-feed',protect,getHomeFeed);
@@ -57,6 +58,8 @@ router.patch(
   validate,
   updateProductImage
 );
+
+router.get('/:id/similar',getSimilarProducts);
 
 router.get('/:id', getProductById);
 
