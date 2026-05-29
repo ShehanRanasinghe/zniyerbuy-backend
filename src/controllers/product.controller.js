@@ -415,6 +415,44 @@ exports.getSearchHistory = asyncHandler(async (req, res) => {
   }
 });
 
+exports.getTrendingSearches = asyncHandler(async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('search_history')
+      .select('keyword');
+
+    if (error) throw error;
+
+    const keywordMap = {};
+
+    data.forEach((item) => {
+      const keyword = item.keyword.toLowerCase();
+
+      keywordMap[keyword] =
+        (keywordMap[keyword] || 0) + 1;
+    });
+
+    const trending = Object.entries(keywordMap)
+      .map(([keyword, count]) => ({
+        keyword,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    res.status(200).json({
+      success: true,
+      count: trending.length,
+      data: trending,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
 exports.getProductById = async (req, res) => {
   try {
     const { id } = req.params;
