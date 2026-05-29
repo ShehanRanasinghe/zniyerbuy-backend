@@ -169,3 +169,48 @@ exports.getTopCategories = asyncHandler(async (req, res) => {
     });
   }
 });
+
+exports.getUserActivityStats = asyncHandler(async (req, res) => {
+  try {
+    const [
+      recentViews,
+      recentSearches,
+      recentFavorites,
+    ] = await Promise.all([
+      supabase
+        .from('recently_viewed')
+        .select('*', {
+          count: 'exact',
+          head: true,
+        }),
+
+      supabase
+        .from('search_history')
+        .select('*', {
+          count: 'exact',
+          head: true,
+        }),
+
+      supabase
+        .from('favorites')
+        .select('*', {
+          count: 'exact',
+          head: true,
+        }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalViews: recentViews.count || 0,
+        totalSearches: recentSearches.count || 0,
+        totalFavorites: recentFavorites.count || 0,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
