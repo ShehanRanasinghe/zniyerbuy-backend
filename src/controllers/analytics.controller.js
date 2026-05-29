@@ -214,3 +214,65 @@ exports.getUserActivityStats = asyncHandler(async (req, res) => {
     });
   }
 });
+
+exports.getPopularShops = asyncHandler(async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('shops')
+      .select(`
+        *,
+        products (
+          views,
+          favorites_count,
+          recommendation_score
+        )
+      `);
+
+    if (error) throw error;
+
+    const rankedShops = data.map((shop) => {
+      const products = shop.products || [];
+
+      const totalViews = products.reduce(
+        (sum, p) => sum + (p.views || 0),
+        0
+      );
+
+      const totalFavorites = products.reduce(
+        (sum, p) => sum + (p.favorites_count || 0),
+        0
+      );
+
+      const totalScore = products.reduce(
+        (sum, p) => sum + (p.recommendation_score || 0),
+        0
+      );
+
+      return {
+        ...shop,
+        analytics: {
+          totalViews,
+          totalFavorites,
+          totalScore,
+        },
+      };
+    });
+
+    rankedShops.sort(
+      (a, b) =>
+        b.analytics.totalScore -
+        a.analytics.totalScore
+    );
+
+    res.status(200).json({
+      success: true,
+      count: rankedShops.length,
+      data: rankedShops,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
