@@ -376,11 +376,8 @@ exports.getRecentlyTrendingProducts = asyncHandler(async (req, res) => {
           address
         )
       `)
-      .gte('views', 10)
-      .order('views', {
-        ascending: false,
-      })
-      .order('favorites_count', {
+      .gte('recommendation_score', 5)
+      .order('recommendation_score', {
         ascending: false,
       })
       .limit(10);
@@ -390,6 +387,7 @@ exports.getRecentlyTrendingProducts = asyncHandler(async (req, res) => {
     res.status(200).json({
       success: true,
       count: data.length,
+      ranking: 'recommendation_score',
       data,
     });
   } catch (err) {
