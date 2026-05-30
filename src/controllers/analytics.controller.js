@@ -276,3 +276,69 @@ exports.getPopularShops = asyncHandler(async (req, res) => {
     });
   }
 });
+
+exports.getSellerPerformance = asyncHandler(async (req, res) => {
+  try {
+    const ownerId = req.user.id;
+
+    const { data: shops } = await supabase
+      .from('shops')
+      .select('id')
+      .eq('owner_id', ownerId);
+
+    const shopIds = shops.map((shop) => shop.id);
+
+    const { data: products, error } = await supabase
+      .from('products')
+      .select(`
+        views,
+        favorites_count,
+        average_rating,
+        recommendation_score
+      `)
+      .in('shop_id', shopIds);
+
+    if (error) throw error;
+
+    const totalViews = products.reduce(
+      (sum, p) => sum + (p.views || 0),
+      0
+    );
+
+    const totalFavorites = products.reduce(
+      (sum, p) => sum + (p.favorites_count || 0),
+      0
+    );
+
+    const avgRating =
+      products.length > 0
+        ? (
+            products.reduce(
+              (sum, p) => sum + (p.average_rating || 0),
+              0
+            ) / products.length
+          ).toFixed(2)
+        : 0;
+
+    const totalRecommendationScore =
+      products.reduce(
+        (sum, p) => sum + (p.recommendation_score || 0),
+        0
+      );
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalViews,
+        totalFavorites,
+        averageRating: Number(avgRating),
+        totalRecommendationScore,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
