@@ -364,6 +364,42 @@ exports.getSimilarProducts = asyncHandler(async (req, res) => {
   }
 });
 
+exports.getRecentlyTrendingProducts = asyncHandler(async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select(`
+        *,
+        shops (
+          id,
+          name,
+          address
+        )
+      `)
+      .gte('views', 10)
+      .order('views', {
+        ascending: false,
+      })
+      .order('favorites_count', {
+        ascending: false,
+      })
+      .limit(10);
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      count: data.length,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
 exports.searchProducts = async (req, res) => {
   try {
     const { q } = req.query;

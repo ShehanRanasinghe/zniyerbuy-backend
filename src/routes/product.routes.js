@@ -29,6 +29,7 @@ const {
   getSearchHistory,
   getTrendingSearches,
   getSimilarProducts,
+  getRecentlyTrendingProducts,
 } = require('../controllers/product.controller');
 
 router.get('/home-feed',protect,getHomeFeed);
@@ -40,6 +41,8 @@ router.get('/recommended',protect,getRecommendedProducts);
 router.get( '/recently-viewed',protect,getRecentlyViewedProducts);
 
 router.get('/trending', getTrendingProducts);
+
+router.get('/recently-trending',getRecentlyTrendingProducts);
 
 router.get('/trending-searches', getTrendingSearches);
 
