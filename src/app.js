@@ -16,6 +16,8 @@ const apiLimiter = require('./middleware/rateLimiter');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 
+const systemRoutes = require('./routes/system.routes');
+
 const app = express();
 
 // Middlewares
@@ -43,6 +45,8 @@ app.use(
   swaggerUi.serve,
   swaggerUi.setup(swaggerSpec)
 );
+
+app.use('/api/v1/system', systemRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {
