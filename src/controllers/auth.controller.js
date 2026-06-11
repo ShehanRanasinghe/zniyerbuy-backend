@@ -1,5 +1,26 @@
+// Authentication Controller
+
+// Handles user registration and current-user retrieval endpoints.
+// Works with Firebase (for auth tokens) and Supabase (for user profiles).
+// Why: Firebase handles authentication but doesn't store custom user profile data. 
+// This controller bridges Firebase auth with our Supabase user profiles, creating user records on registration.
+
+// Section 1: Dependencies
+// - supabase: database client for user profile CRUD operations
+// - asyncHandler: wraps async functions to catch rejected promises
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
+
+// Section 2: Register User
+// POST /api/v1/auth/register
+// Creates a new user profile in Supabase linked to their Firebase UID.
+// Flow:
+//   1. Extract user data from request body
+//   2. Check if a user with the same firebase_uid already exists
+//   3. If exists, return 400 to prevent duplicate registrations
+//   4. Insert new user record with default role 'consumer'
+//   5. Return the created user data
+// Why check for existing user first: Prevents duplicate profiles when the client retries registration (e.g., due to network issues).
 
 exports.registerUser = asyncHandler(async (req, res) => {
   try {
@@ -10,7 +31,7 @@ exports.registerUser = asyncHandler(async (req, res) => {
       role,
     } = req.body;
 
-    // Check existing user
+    // Check if a user profile already exists for this Firebase UID
     const { data: existingUser } = await supabase
       .from('users')
       .select('*')
@@ -24,7 +45,8 @@ exports.registerUser = asyncHandler(async (req, res) => {
       });
     }
 
-    // Insert user
+    // Insert the new user profile into Supabase.
+    // Default role is 'consumer' if not specified.
     const { data, error } = await supabase
       .from('users')
       .insert([
@@ -52,6 +74,12 @@ exports.registerUser = asyncHandler(async (req, res) => {
     });
   }
 });
+
+// Section 3: Get Current User
+// GET /api/v1/auth/me
+// Returns the currently authenticated user's information that was attached to req.user by the auth.protect middleware.
+// Why this is so simple: The protect middleware already did all the heavy lifting (token verification, user lookup). 
+// This just sends back what protect found.
 
 exports.getCurrentUser = async (req, res) => {
   try {

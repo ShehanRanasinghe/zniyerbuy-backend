@@ -1,8 +1,22 @@
+// Database Connectivity Test Routes
+
+// Provides a simple endpoint to test the Supabase database connection.
+// Used during development and deployment to verify the DB is reachable.
+// Why: When setting up the environment or debugging connection issues, this endpoint quickly confirms whether Supabase credentials are correct and the database is accessible, without testing business logic.
+
+// Section 1: Dependencies
 const express = require('express');
 const router = express.Router();
 
 const supabase = require('../config/supabase');
 
+// Section 2: Route Definition
+// GET /db-test - Tests database connectivity (public)
+//   Attempts to read 1 row from the 'users' table.
+//   If successful, returns a success message.
+//   If it fails, returns the error.
+//   Why select from 'users': It's a table that should always exist in the schema. limit(1) keeps the query lightweight.
+//   WARNING: This route should be disabled or protected in production to prevent exposing user data.
 router.get('/db-test', async (req, res) => {
   try {
     const { data, error } = await supabase

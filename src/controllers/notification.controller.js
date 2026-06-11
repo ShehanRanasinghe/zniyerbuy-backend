@@ -1,5 +1,21 @@
+// Notification Controller
+
+// Handles creating and retrieving user notifications. 
+// Notifications inform users about deals, order updates, and other platform events.
+// Why: Notifications keep users engaged with the platform by alerting them to relevant events (new deals, price drops, order status changes).
+
+// Section 1: Dependencies
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
+
+// Section 2: Create Notification
+// POST /api/v1/notifications
+// Creates a notification record for a specific user.
+// Flow:
+//   1. Extract notification data (user_id, title, message, type) from body
+//   2. Insert into the 'notifications' table
+//   3. Return the created notification
+// Why user_id comes from body (not req.user): Notifications can be sent to any user by admin or system processes, not just the currently authenticated user.
 
 exports.createNotification = asyncHandler(async (req, res) => {
   try {
@@ -37,6 +53,12 @@ exports.createNotification = asyncHandler(async (req, res) => {
     });
   }
 });
+
+// Section 3: Get User Notifications
+// GET /api/v1/notifications
+// Retrieves all notifications for the authenticated user.
+// Ordered newest-first so the most recent alerts appear on top.
+// Why filter by req.user.id: Users should only see their own notifications, enforcing per-user data isolation.
 
 exports.getUserNotifications = async (req, res) => {
   try {
