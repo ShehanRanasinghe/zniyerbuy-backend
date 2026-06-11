@@ -111,6 +111,7 @@ app.use('/api/v1/docs', require('./routes/docs.routes'));
 app.use('/api/v1/health', require('./routes/health.routes'));
 app.use('/api/v1/uploads', require('./routes/upload.routes'));
 app.use('/api/v1/analytics', require('./routes/analytics.routes'));
+app.use('/api/v1/ai', require('./routes/ai.routes'));
 
 // Section 10: Error Handling Middleware
 // - notFound: catches any request that didn't match a route above and creates a 404 error, then forwards it to errorHandler.
