@@ -55,11 +55,10 @@ exports.protect = async (req, res, next) => {
     }
 
     // Attach user info to the request for downstream route handlers.
-    // The role defaults to 'customer' if not set in the token claims.
     req.user = {
-      id: decoded.uid,
-      email: decoded.email,
-      role: decoded.role || 'customer',
+      id: user.firebase_uid,
+      email: user.email,
+      role: user.role,
     };
 
     next();

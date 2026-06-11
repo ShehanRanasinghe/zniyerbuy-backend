@@ -97,6 +97,7 @@ app.get('/api/v1', (req, res) => {
 // Each route module handles a specific resource/domain area.
 // Why: Keeps routes modular and organized by feature. Each file contains its own middleware chain (auth, validation, etc.).
 app.use('/api/v1/auth', require('./routes/auth.routes'));
+app.use('/api/v1/admin', require('./routes/admin.routes'));
 app.use('/api/v1/test', require('./routes/test.routes'));
 app.use('/api/v1/protected', require('./routes/protected.routes'));
 app.use('/api/v1/shops', require('./routes/shop.routes'));
