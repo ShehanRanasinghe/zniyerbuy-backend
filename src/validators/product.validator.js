@@ -20,15 +20,25 @@ exports.createProductValidator = [
     .isUUID()
     .withMessage('Valid shop ID is required'),
 
-  body('product_name')
+  body('name')
     .notEmpty()
     .withMessage('Product name is required'),
 
-  body('price')
+  body('original_price')
     .isFloat({ min: 0 })
-    .withMessage('Valid price is required'),
+    .withMessage('Valid original price is required'),
+
+  body('current_price')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Valid current price is required'),
 
   body('stock_quantity')
     .isInt({ min: 0 })
     .withMessage('Valid stock quantity is required'),
+
+  body('unit')
+    .optional()
+    .isIn(['kg', 'piece', 'litre', 'pack', 'dozen', 'metre'])
+    .withMessage('Invalid unit type'),
 ];

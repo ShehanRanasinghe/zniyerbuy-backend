@@ -5,7 +5,7 @@
 // The recommendation engine, search system, and personalized feeds all revolve around product data.
 
 // Section 1: Dependencies
-const supabase = require('../config/supabase');
+const { products, recommendation } = require('../services');
 const asyncHandler = require('../utils/asyncHandler');
 
 // Section 2: Create Product
@@ -21,29 +21,28 @@ exports.createProduct = asyncHandler(async (req, res) => {
   try {
     const {
       shop_id,
-      product_name,
+      name,
       description,
-      price,
+      original_price,
+      current_price,
+      unit,
       stock_quantity,
       image_url,
       category,
     } = req.body;
 
-    const { data, error } = await supabase
-      .from('products')
-      .insert([
-        {
-          shop_id,
-          product_name,
-          description,
-          price,
-          stock_quantity,
-          image_url,
-          category,
-        },
-      ])
-      .select()
-      .single();
+    // Use products service to create product
+    const { data, error } = await products.createProduct({
+      shop_id,
+      name,
+      description,
+      original_price,
+      current_price: current_price || original_price,
+      unit: unit || 'piece',
+      stock_quantity,
+      image_url,
+      category,
+    });
 
     if (error) throw error;
 
@@ -72,55 +71,22 @@ exports.createProduct = asyncHandler(async (req, res) => {
 // Why pagination with range(): Supabase's .range(from, to) maps directly to SQL OFFSET/LIMIT, enabling efficient pagination without loading all products into memory.
 
 exports.getProducts = asyncHandler(async (req, res) => {
-
   // Parse pagination parameters with sensible defaults
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
-  const from = (page - 1) * limit;
-  const to = from + limit - 1;
   const category = req.query.category;
   const sort = req.query.sort || 'newest';
   const keyword = req.query.keyword;
 
   try {
-    // Build the base query with shop relation join
-    let query = supabase
-      .from('products')
-      .select(`
-        *,
-        shops (
-          id,
-          name
-        )
-      `);
-
-    // Apply optional category filter
-    if (category) {
-      query = query.eq('category', category);
-    }
-
-    // Apply optional keyword search (case-insensitive partial match)
-    if (keyword) {
-      query = query.ilike('product_name', `%${keyword}%`);
-    }
-
-    // Determine sort field and direction based on sort parameter
-    let orderField = 'created_at';
-    let ascending = false;
-
-    if (sort === 'price_asc') {
-      orderField = 'price';
-      ascending = true;
-    }
-
-    if (sort === 'price_desc') {
-      orderField = 'price';
-      ascending = false;
-    }
-
-    const { data, error } = await query
-      .order(orderField, { ascending })
-      .range(from, to);
+    // Use products service to get products with filters
+    const { data, error } = await products.getProducts({
+      page,
+      limit,
+      category,
+      sort,
+      keyword,
+    });
 
     if (error) throw error;
 
@@ -148,21 +114,8 @@ exports.getTrendingProducts = asyncHandler(async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
 
-    const { data, error } = await supabase
-      .from('products')
-      .select(`
-        *,
-        shops (
-          id,
-          name,
-          address
-        )
-      `)
-      .order('average_rating', { ascending: false })
-      .order('favorites_count', { ascending: false })
-      .order('views', { ascending: false })
-      .order('recommendation_score', { ascending: false })
-      .limit(limit);
+    // Use products service to get trending products
+    const { data, error } = await products.getTrendingProducts(limit);
 
     if (error) throw error;
 
@@ -187,17 +140,8 @@ exports.getTrendingProducts = asyncHandler(async (req, res) => {
 
 exports.getRecentlyViewedProducts = asyncHandler(async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('recently_viewed')
-      .select(`
-        viewed_at,
-        products (
-          *
-        )
-      `)
-      .eq('user_id', req.user.id)
-      .order('viewed_at', { ascending: false })
-      .limit(10);
+    // Use products service to get recently viewed products
+    const { data, error } = await products.getRecentlyViewedProducts(req.user.id);
 
     if (error) throw error;
 
@@ -226,38 +170,8 @@ exports.getRecentlyViewedProducts = asyncHandler(async (req, res) => {
 
 exports.getRecommendedProducts = asyncHandler(async (req, res) => {
   try {
-    // Get all product IDs the user has already viewed
-    const { data: viewedProducts } = await supabase
-      .from('recently_viewed')
-      .select('product_id')
-      .eq('user_id', req.user.id);
-
-    const viewedIds = viewedProducts.map(
-      (item) => item.product_id
-    );
-
-    // Build query for products the user hasn't viewed
-    let query = supabase
-      .from('products')
-      .select(`
-        *,
-        shops (
-          id,
-          name,
-          address
-        )
-      `)
-      .order('recommendation_score', {
-        ascending: false,
-      })
-      .limit(10);
-
-    // Only apply exclusion filter if the user has viewed products
-    if (viewedIds.length > 0) {
-      query = query.not('id', 'in', `(${viewedIds.join(',')})`);
-    }
-
-    const { data, error } = await query;
+    // Use recommendation service to get recommended products
+    const { data, error } = await recommendation.getRecommendedProducts(req.user.id);
 
     if (error) throw error;
 
@@ -287,34 +201,8 @@ exports.getRecommendedProducts = asyncHandler(async (req, res) => {
 
 exports.getInterestBasedRecommendations = asyncHandler(async (req, res) => {
   try {
-    // Fetch user's top interest categories ranked by score
-    const { data: interests } = await supabase
-      .from('user_interests')
-      .select('category')
-      .eq('user_id', req.user.id)
-      .order('score', { ascending: false })
-      .limit(3);
-
-    const categories = interests.map(
-      (item) => item.category
-    );
-
-    // Query products in the user's preferred categories
-    const { data, error } = await supabase
-      .from('products')
-      .select(`
-        *,
-        shops (
-          id,
-          name,
-          address
-        )
-      `)
-      .in('category', categories)
-      .order('recommendation_score', {
-        ascending: false,
-      })
-      .limit(10);
+    // Use recommendation service to get interest-based recommendations
+    const { data, categories, error } = await recommendation.getInterestBasedRecommendations(req.user.id);
 
     if (error) throw error;
 
@@ -508,17 +396,18 @@ exports.searchProducts = async (req, res) => {
   try {
     const { q } = req.query;
 
-    // Log the search query to history if the user is authenticated and the query is not empty. This data powers trending searches.
-    if (req.user && q?.trim()) {
-      await supabase
-        .from('search_history')
-        .insert({
-          user_id: req.user.id,
-          keyword: q,
-        });
-    }
+    // NOTE: search_history table doesn't exist in the database schema.
+    // Commenting out until the table is created with columns: id, user_id, keyword, searched_at
+    // if (req.user && q?.trim()) {
+    //   await supabase
+    //     .from('search_history')
+    //     .insert({
+    //       user_id: req.user.id,
+    //       keyword: q,
+    //     });
+    // }
 
-    // Search for products by product_name using case-insensitive match
+    // Search for products by name using case-insensitive match
     const { data, error } = await supabase
       .from('products')
       .select(`
@@ -528,7 +417,7 @@ exports.searchProducts = async (req, res) => {
           name
         )
       `)
-      .ilike('product_name', `%${q}%`)
+      .ilike('name', `%${q}%`)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -570,15 +459,15 @@ exports.getSearchSuggestions = asyncHandler(async (req, res) => {
 
     const { data, error } = await supabase
       .from('products')
-      .select('product_name')
-      .ilike('product_name', `%${query}%`)
+      .select('name')
+      .ilike('name', `%${query}%`)
       .limit(10);
 
     if (error) throw error;
 
     // Deduplicate product names using Set
     const suggestions = [
-      ...new Set(data.map((item) => item.product_name)),
+      ...new Set(data.map((item) => item.name)),
     ];
 
     res.status(200).json({
@@ -602,22 +491,33 @@ exports.getSearchSuggestions = asyncHandler(async (req, res) => {
 
 exports.getSearchHistory = asyncHandler(async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('search_history')
-      .select('keyword, searched_at')
-      .eq('user_id', req.user.id)
-      .order('searched_at', {
-        ascending: false,
-      })
-      .limit(10);
-
-    if (error) throw error;
-
+    // NOTE: search_history table doesn't exist in the database schema.
+    // Returning empty array until the table is created.
+    // Required schema: CREATE TABLE search_history (id uuid, user_id uuid, keyword text, searched_at timestamp)
+    
     res.status(200).json({
       success: true,
-      count: data.length,
-      data,
+      count: 0,
+      data: [],
+      message: 'Search history feature requires database migration',
     });
+
+    // const { data, error } = await supabase
+    //   .from('search_history')
+    //   .select('keyword, searched_at')
+    //   .eq('user_id', req.user.id)
+    //   .order('searched_at', {
+    //     ascending: false,
+    //   })
+    //   .limit(10);
+
+    // if (error) throw error;
+
+    // res.status(200).json({
+    //   success: true,
+    //   count: data.length,
+    //   data,
+    // });
   } catch (err) {
     res.status(500).json({
       success: false,
@@ -638,36 +538,46 @@ exports.getSearchHistory = asyncHandler(async (req, res) => {
 
 exports.getTrendingSearches = asyncHandler(async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('search_history')
-      .select('keyword');
-
-    if (error) throw error;
-
-    // Build a frequency map of search keywords (case-insensitive)
-    const keywordMap = {};
-
-    data.forEach((item) => {
-      const keyword = item.keyword.toLowerCase();
-
-      keywordMap[keyword] =
-        (keywordMap[keyword] || 0) + 1;
-    });
-
-    // Convert map to sorted array and take top 10
-    const trending = Object.entries(keywordMap)
-      .map(([keyword, count]) => ({
-        keyword,
-        count,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-
+    // NOTE: search_history table doesn't exist in the database schema.
+    // Returning empty array until the table is created.
+    
     res.status(200).json({
       success: true,
-      count: trending.length,
-      data: trending,
+      count: 0,
+      data: [],
+      message: 'Trending searches feature requires database migration',
     });
+
+    // const { data, error } = await supabase
+    //   .from('search_history')
+    //   .select('keyword');
+
+    // if (error) throw error;
+
+    // // Build a frequency map of search keywords (case-insensitive)
+    // const keywordMap = {};
+
+    // data.forEach((item) => {
+    //   const keyword = item.keyword.toLowerCase();
+
+    //   keywordMap[keyword] =
+    //     (keywordMap[keyword] || 0) + 1;
+    // });
+
+    // // Convert map to sorted array and take top 10
+    // const trending = Object.entries(keywordMap)
+    //   .map(([keyword, count]) => ({
+    //     keyword,
+    //     count,
+    //   }))
+    //   .sort((a, b) => b.count - a.count)
+    //   .slice(0, 10);
+
+    // res.status(200).json({
+    //   success: true,
+    //   count: trending.length,
+    //   data: trending,
+    // });
   } catch (err) {
     res.status(500).json({
       success: false,
@@ -691,50 +601,15 @@ exports.getProductById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Increment the product's view counter via Supabase RPC
-    await supabase.rpc('increment_product_views', {
-      product_id: id,
-    });
-
-    // Recalculate recommendation score after the new view
-    await supabase.rpc('update_recommendation_score', {
-      product_id: id,
-    });
-
-    // Record this view in the user's recently_viewed history
+    // Use recommendation service to track view and update scores
     if (req.user) {
-      await supabase
-        .from('recently_viewed')
-        .insert({
-          user_id: req.user.id,
-          product_id: id,
-        });
+      await recommendation.trackProductView(req.user.id, id);
     }
 
-    // Fetch the full product details with shop information
-    const { data, error } = await supabase
-      .from('products')
-      .select(`
-        *,
-        shops (
-          id,
-          name,
-          address,
-          contact_number
-        )
-      `)
-      .eq('id', id)
-      .single();
+    // Use products service to get product details
+    const { data, error } = await products.getProductById(id);
 
     if (error) throw error;
-
-    // Update user's interest score for this product's category. This helps the interest-based recommendation engine learn which categories the user prefers.
-    if (req.user && data?.category) {
-      await supabase.rpc('update_user_interest', {
-        p_user_id: req.user.id,
-        p_category: data.category,
-      });
-    }
 
     res.status(200).json({
       success: true,
@@ -759,14 +634,8 @@ exports.updateProductImage = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { image_url } = req.body;
 
-    const { data, error } = await supabase
-      .from('products')
-      .update({
-        image_url,
-      })
-      .eq('id', id)
-      .select()
-      .single();
+    // Use products service to update product
+    const { data, error } = await products.updateProduct(id, { image_url });
 
     if (error) throw error;
 
