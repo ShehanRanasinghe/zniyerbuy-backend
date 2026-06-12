@@ -157,7 +157,7 @@ exports.getAllShops = asyncHandler(async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('shops')
-      .select('id, name, owner_id, category, is_verified, is_active, created_at, users(full_name)')
+      .select('id, name, owner_id, category, is_verified, is_active, created_at, users!owner_id(full_name)')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -260,7 +260,7 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, shop_id, category, current_price, is_available, shops(name)')
+      .select('id, name, shop_id, category, current_price, is_available, shops!shop_id(name)')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -271,7 +271,7 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
       shop: product.shops?.name || `Shop ${index + 1}`,
       category: product.category || 'General',
       price: `LKR ${Number(product.current_price || 0).toLocaleString()}`,
-      status: product.is_flagged ? 'Flagged' : !product.is_available ? 'Inactive' : 'Active',
+      status: !product.is_available ? 'Inactive' : 'Active',
       initials: product.name ? product.name.split(' ')[0].substring(0, 2).toUpperCase() : 'PR',
       color: '#1a1a1a',
       textColor: '#888888',
@@ -291,15 +291,15 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
 
 // Section 10: Flag Product (Admin)
 // PATCH /api/v1/admin/products/:id/flag
-// Flags or unflags a product
+// Toggles product availability (since is_flagged column doesn't exist in schema)
 exports.flagProduct = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
-    const { is_flagged } = req.body;
+    const { is_available } = req.body;
 
     const { data, error } = await supabase
       .from('products')
-      .update({ is_flagged })
+      .update({ is_available })
       .eq('id', id)
       .select()
       .single();
@@ -308,7 +308,7 @@ exports.flagProduct = asyncHandler(async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Product ${is_flagged ? 'flagged' : 'unflagged'} successfully`,
+      message: `Product ${is_available ? 'activated' : 'deactivated'} successfully`,
       data,
     });
   } catch (err) {
@@ -453,7 +453,7 @@ exports.getAllDeals = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('deals')
-      .select('id, title, shop_id, product_id, discount_type, discount_value, deal_price, original_price, is_active, start_date, end_date, views_count, created_at, shops(name)')
+      .select('id, title, shop_id, product_id, discount_type, discount_value, deal_price, original_price, is_active, start_date, end_date, views_count, created_at, shops!shop_id(name)')
       .order('created_at', { ascending: false });
     if (error) throw error;
     const formatted = data.map((deal) => ({
@@ -499,7 +499,7 @@ exports.getAllReviews = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('reviews')
-      .select('id, rating, comment, created_at, user_id, shop_id, users(full_name, email), shops(name)')
+      .select('id, rating, comment, created_at, user_id, shop_id, users!user_id(full_name, email), shops!shop_id(name)')
       .order('created_at', { ascending: false });
     if (error) throw error;
     const formatted = data.map((r) => ({
@@ -527,7 +527,7 @@ exports.getAllNotifications = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('notifications')
-      .select('id, title, body, type, is_read, created_at, user_id, users(full_name, email)')
+      .select('id, title, body, type, is_read, created_at, user_id, users!user_id(full_name, email)')
       .order('created_at', { ascending: false }).limit(200);
     if (error) throw error;
     const formatted = data.map((n) => ({
