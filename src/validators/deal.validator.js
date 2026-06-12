@@ -21,13 +21,33 @@ exports.createDealValidator = [
     .isUUID()
     .withMessage('Valid shop ID is required'),
 
+  body('product_id')
+    .optional()
+    .isUUID()
+    .withMessage('Valid product ID is required'),
+
   body('title')
     .notEmpty()
     .withMessage('Deal title is required'),
 
-  body('discount_percentage')
-    .isFloat({ min: 0, max: 100 })
-    .withMessage('Discount must be between 0 and 100'),
+  body('discount_type')
+    .optional()
+    .isIn(['percentage', 'fixed_amount'])
+    .withMessage('Discount type must be percentage or fixed_amount'),
+
+  body('discount_value')
+    .isFloat({ min: 0 })
+    .withMessage('Valid discount value is required'),
+
+  body('original_price')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Valid original price is required'),
+
+  body('deal_price')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Valid deal price is required'),
 
   body('start_date')
     .isISO8601()

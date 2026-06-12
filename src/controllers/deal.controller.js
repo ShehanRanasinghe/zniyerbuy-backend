@@ -22,9 +22,14 @@ exports.createDeal = asyncHandler(async (req, res) => {
   try {
     const {
       shop_id,
+      product_id,
       title,
       description,
-      discount_percentage,
+      discount_type,
+      discount_value,
+      original_price,
+      deal_price,
+      image_url,
       start_date,
       end_date,
     } = req.body;
@@ -34,9 +39,14 @@ exports.createDeal = asyncHandler(async (req, res) => {
       .insert([
         {
           shop_id,
+          product_id,
           title,
           description,
-          discount_percentage,
+          discount_type: discount_type || 'percentage',
+          discount_value,
+          original_price,
+          deal_price,
+          image_url,
           start_date,
           end_date,
         },
