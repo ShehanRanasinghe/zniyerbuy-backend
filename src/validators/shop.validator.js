@@ -18,13 +18,22 @@ const { body } = require('express-validator');
 // Why latitude/longitude are required: The getNearbyShops feature depends on valid coordinates. 
 // Shops without coordinates would never appear in location-based search results.
 exports.createShopValidator = [
-  body('shop_name')
+  body('name')
     .notEmpty()
     .withMessage('Shop name is required'),
+
+  body('category')
+    .optional()
+    .isIn(['grocery', 'electronics', 'clothing', 'food', 'pharmacy', 'beauty', 'sports', 'other'])
+    .withMessage('Invalid shop category'),
 
   body('address')
     .notEmpty()
     .withMessage('Address is required'),
+
+  body('city')
+    .notEmpty()
+    .withMessage('City is required'),
 
   body('latitude')
     .isFloat()
@@ -34,7 +43,7 @@ exports.createShopValidator = [
     .isFloat()
     .withMessage('Valid longitude is required'),
 
-  body('contact_number')
+  body('phone')
     .notEmpty()
-    .withMessage('Contact number is required'),
+    .withMessage('Phone number is required'),
 ];
