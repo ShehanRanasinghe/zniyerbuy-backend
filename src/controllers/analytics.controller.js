@@ -223,13 +223,20 @@ exports.getTopCategories = asyncHandler(async (req, res) => {
 exports.getUserActivityStats = asyncHandler(async (req, res) => {
   try {
     // Count all records in activity tables in parallel
-    // NOTE: search_history table doesn't exist in schema, returning 0 for now
     const [
       recentViews,
+      searchHistory,
       recentFavorites,
     ] = await Promise.all([
       supabase
         .from('recently_viewed')
+        .select('*', {
+          count: 'exact',
+          head: true,
+        }),
+
+      supabase
+        .from('search_history')
         .select('*', {
           count: 'exact',
           head: true,
@@ -247,7 +254,7 @@ exports.getUserActivityStats = asyncHandler(async (req, res) => {
       success: true,
       stats: {
         totalViews: recentViews.count || 0,
-        totalSearches: 0, // search_history table doesn't exist
+        totalSearches: searchHistory.count || 0,
         totalFavorites: recentFavorites.count || 0,
       },
     });

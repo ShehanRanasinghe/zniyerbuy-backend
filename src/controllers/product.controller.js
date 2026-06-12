@@ -396,16 +396,14 @@ exports.searchProducts = async (req, res) => {
   try {
     const { q } = req.query;
 
-    // NOTE: search_history table doesn't exist in the database schema.
-    // Commenting out until the table is created with columns: id, user_id, keyword, searched_at
-    // if (req.user && q?.trim()) {
-    //   await supabase
-    //     .from('search_history')
-    //     .insert({
-    //       user_id: req.user.id,
-    //       keyword: q,
-    //     });
-    // }
+    if (req.user && q?.trim()) {
+      await supabase
+        .from('search_history')
+        .insert({
+          user_id: req.user.id,
+          keyword: q,
+        });
+    }
 
     // Search for products by name using case-insensitive match
     const { data, error } = await supabase
@@ -491,33 +489,24 @@ exports.getSearchSuggestions = asyncHandler(async (req, res) => {
 
 exports.getSearchHistory = asyncHandler(async (req, res) => {
   try {
-    // NOTE: search_history table doesn't exist in the database schema.
-    // Returning empty array until the table is created.
-    // Required schema: CREATE TABLE search_history (id uuid, user_id uuid, keyword text, searched_at timestamp)
+
     
+    const { data, error } = await supabase
+      .from('search_history')
+      .select('keyword, searched_at')
+      .eq('user_id', req.user.id)
+      .order('searched_at', {
+        ascending: false,
+      })
+      .limit(10);
+
+    if (error) throw error;
+
     res.status(200).json({
       success: true,
-      count: 0,
-      data: [],
-      message: 'Search history feature requires database migration',
+      count: data.length,
+      data,
     });
-
-    // const { data, error } = await supabase
-    //   .from('search_history')
-    //   .select('keyword, searched_at')
-    //   .eq('user_id', req.user.id)
-    //   .order('searched_at', {
-    //     ascending: false,
-    //   })
-    //   .limit(10);
-
-    // if (error) throw error;
-
-    // res.status(200).json({
-    //   success: true,
-    //   count: data.length,
-    //   data,
-    // });
   } catch (err) {
     res.status(500).json({
       success: false,
@@ -538,46 +527,37 @@ exports.getSearchHistory = asyncHandler(async (req, res) => {
 
 exports.getTrendingSearches = asyncHandler(async (req, res) => {
   try {
-    // NOTE: search_history table doesn't exist in the database schema.
-    // Returning empty array until the table is created.
     
-    res.status(200).json({
-      success: true,
-      count: 0,
-      data: [],
-      message: 'Trending searches feature requires database migration',
+    const { data, error } = await supabase
+      .from('search_history')
+      .select('keyword');
+
+    if (error) throw error;
+
+    // Build a frequency map of search keywords (case-insensitive)
+    const keywordMap = {};
+
+    data.forEach((item) => {
+      const keyword = item.keyword.toLowerCase();
+
+      keywordMap[keyword] =
+        (keywordMap[keyword] || 0) + 1;
     });
 
-    // const { data, error } = await supabase
-    //   .from('search_history')
-    //   .select('keyword');
+    // Convert map to sorted array and take top 10
+    const trending = Object.entries(keywordMap)
+      .map(([keyword, count]) => ({
+        keyword,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
 
-    // if (error) throw error;
-
-    // // Build a frequency map of search keywords (case-insensitive)
-    // const keywordMap = {};
-
-    // data.forEach((item) => {
-    //   const keyword = item.keyword.toLowerCase();
-
-    //   keywordMap[keyword] =
-    //     (keywordMap[keyword] || 0) + 1;
-    // });
-
-    // // Convert map to sorted array and take top 10
-    // const trending = Object.entries(keywordMap)
-    //   .map(([keyword, count]) => ({
-    //     keyword,
-    //     count,
-    //   }))
-    //   .sort((a, b) => b.count - a.count)
-    //   .slice(0, 10);
-
-    // res.status(200).json({
-    //   success: true,
-    //   count: trending.length,
-    //   data: trending,
-    // });
+    res.status(200).json({
+      success: true,
+      count: trending.length,
+      data: trending,
+    });
   } catch (err) {
     res.status(500).json({
       success: false,
