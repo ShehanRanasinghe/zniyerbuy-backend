@@ -6,9 +6,9 @@
 // This controller bridges Firebase auth with our Supabase user profiles, creating user records on registration.
 
 // Section 1: Dependencies
-// - supabase: database client for user profile CRUD operations
+// - auth: Authentication service for user management
 // - asyncHandler: wraps async functions to catch rejected promises
-const supabase = require('../config/supabase');
+const { auth } = require('../services');
 const asyncHandler = require('../utils/asyncHandler');
 
 // Section 2: Register User
@@ -31,36 +31,24 @@ exports.registerUser = asyncHandler(async (req, res) => {
       role,
     } = req.body;
 
-    // Check if a user profile already exists for this Firebase UID
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('*')
-      .eq('firebase_uid', firebase_uid)
-      .single();
+    // Use auth service to register user
+    const { data, error } = await auth.registerUser({
+      firebase_uid,
+      email,
+      full_name,
+      role: role || 'consumer',
+    });
 
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        error: 'User already exists',
-      });
+    if (error) {
+      // Check if error is due to existing user
+      if (error.includes('already exists') || error.includes('duplicate')) {
+        return res.status(400).json({
+          success: false,
+          error: 'User already exists',
+        });
+      }
+      throw new Error(error);
     }
-
-    // Insert the new user profile into Supabase.
-    // Default role is 'consumer' if not specified.
-    const { data, error } = await supabase
-      .from('users')
-      .insert([
-        {
-          firebase_uid,
-          email,
-          full_name,
-          role: role || 'consumer',
-        },
-      ])
-      .select()
-      .single();
-
-    if (error) throw error;
 
     res.status(201).json({
       success: true,
