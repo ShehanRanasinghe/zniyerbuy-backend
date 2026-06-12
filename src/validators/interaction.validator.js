@@ -15,10 +15,21 @@ const { body } = require('express-validator');
 // The recommendation engine relies on these specific types to weight user behavior.
 exports.trackInteractionValidator = [
   body('product_id')
+    .optional()
     .isUUID()
     .withMessage('Valid product ID is required'),
 
-  body('interaction_type')
-    .isIn(['view', 'click', 'favorite', 'purchase'])
-    .withMessage('Invalid interaction type'),
+  body('shop_id')
+    .optional()
+    .isUUID()
+    .withMessage('Valid shop ID is required'),
+
+  body('deal_id')
+    .optional()
+    .isUUID()
+    .withMessage('Valid deal ID is required'),
+
+  body('action_type')
+    .isIn(['view', 'save', 'click_deal', 'search', 'purchase'])
+    .withMessage('Invalid action type'),
 ];
