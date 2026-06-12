@@ -6,7 +6,7 @@
 // This middleware adds an ownership check layer on top of basic authentication.
 
 // Section 1: Dependencies
-const supabase = require('../config/supabase');
+const { products } = require('../services');
 
 // Section 2: Ownership Check Logic
 // Flow:
@@ -20,24 +20,18 @@ const checkProductOwnership = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const { data, error } = await supabase
-      .from('products')
-      .select('id, owner_id')
-      .eq('id', id)
-      .single();
+    // Use products service to verify ownership
+    const isOwner = await products.isProductOwner(req.user.id, id);
 
-    if (error || !data) {
+    if (isOwner === null) {
       return res.status(404).json({
         success: false,
         error: 'Product not found',
       });
     }
 
-    // Allow access if user is the owner or has admin role
-    if (
-      data.owner_id !== req.user.id &&
-      req.user.role !== 'admin'
-    ) {
+    // Allow access if user owns the shop or has admin role
+    if (!isOwner && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         error: 'Unauthorized product access',

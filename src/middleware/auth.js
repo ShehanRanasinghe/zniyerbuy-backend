@@ -6,10 +6,8 @@
 // Firebase handles the actual login (email/password, Google, etc.), and this middleware validates the resulting JWT token server-side.
 
 // Section 1: Dependencies
-// - admin: Firebase Admin SDK for verifying ID tokens
-// - supabase: database client to look up user profile data
-const admin = require('../config/firebase');
-const supabase = require('../config/supabase');
+// - auth: Authentication service for user verification
+const { auth } = require('../services');
 
 // Section 2: Protect Middleware
 // Extracts the Bearer token from the Authorization header, verifies it with Firebase, then fetches the corresponding user record from Supabase to confirm the user exists in our DB.
@@ -33,30 +31,20 @@ exports.protect = async (req, res, next) => {
       });
     }
 
-    // Extract the token string after "Bearer "
-    const token = authHeader.split('Bearer ')[1];
-
-    // Verify the token with Firebase Admin SDK.
-    // This checks the token signature, expiry, and issuer.
-    const decoded = await admin.auth().verifyIdToken(token);
-
-    // Look up the user in our Supabase database to confirm they have a registered profile (not just a Firebase account).
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('firebase_uid', decoded.uid)
-      .single();
+    // Use auth service to verify token and get user
+    const { user, error } = await auth.authenticateUser(authHeader);
 
     if (error || !user) {
       return res.status(401).json({
         success: false,
-        error: 'User not found',
+        error: error || 'User not found',
       });
     }
 
     // Attach user info to the request for downstream route handlers.
     req.user = {
-      id: user.firebase_uid,
+      id: user.id,
+      firebase_uid: user.firebase_uid,
       email: user.email,
       role: user.role,
     };
