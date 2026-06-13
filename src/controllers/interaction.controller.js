@@ -22,7 +22,9 @@ exports.trackInteraction = asyncHandler(async (req, res) => {
   try {
     const {
       product_id,
-      interaction_type,
+      shop_id,
+      deal_id,
+      action_type,
     } = req.body;
 
     const { data, error } = await supabase
@@ -31,7 +33,9 @@ exports.trackInteraction = asyncHandler(async (req, res) => {
         {
           user_id: req.user.id,
           product_id,
-          interaction_type,
+          shop_id,
+          deal_id,
+          action_type,
         },
       ])
       .select()

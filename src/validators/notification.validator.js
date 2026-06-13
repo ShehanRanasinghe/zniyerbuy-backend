@@ -23,7 +23,12 @@ exports.createNotificationValidator = [
     .notEmpty()
     .withMessage('Title is required'),
 
-  body('message')
+  body('body')
     .notEmpty()
-    .withMessage('Message is required'),
+    .withMessage('Body is required'),
+
+  body('type')
+    .optional()
+    .isIn(['deal', 'system', 'promo', 'alert'])
+    .withMessage('Invalid notification type'),
 ];

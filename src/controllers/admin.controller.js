@@ -25,8 +25,8 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
       id: user.id,
       name: user.full_name || `User ${index + 1}`,
       email: user.email || 'N/A',
-      role: user.role === 'admin' ? 'Admin' : user.role === 'seller' ? 'Seller' : 'User',
-      status: user.is_active ? 'Active' : 'Inactive',
+      role: user.role === 'admin' ? 'Admin' : user.role === 'shop_owner' ? 'Seller' : 'User',
+      status: 'Active',
       joined: new Date(user.created_at).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
@@ -67,7 +67,7 @@ exports.getRecentUsers = asyncHandler(async (req, res) => {
     const formattedUsers = data.map((user) => ({
       name: user.full_name || 'Unknown User',
       time: getTimeAgo(new Date(user.created_at)),
-      role: user.role === 'admin' ? 'Admin' : user.role === 'seller' ? 'Seller' : 'User',
+      role: user.role === 'admin' ? 'Admin' : user.role === 'shop_owner' ? 'Seller' : 'User',
       color: '#1a1a1a',
       textColor: '#888888',
       initials: user.full_name ? user.full_name.split(' ').map((n) => n[0]).join('') : 'U',
@@ -95,8 +95,8 @@ exports.updateUserRole = asyncHandler(async (req, res) => {
 
     const roleMap = {
       Admin: 'admin',
-      Seller: 'seller',
-      User: 'user',
+      Seller: 'shop_owner',
+      User: 'consumer',
     };
 
     const { data, error } = await supabase
@@ -130,7 +130,7 @@ exports.deleteUser = asyncHandler(async (req, res) => {
 
     const { data, error } = await supabase
       .from('users')
-      .update({ is_active: false })
+      .delete()
       .eq('id', id)
       .select()
       .single();
@@ -157,7 +157,7 @@ exports.getAllShops = asyncHandler(async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('shops')
-      .select('id, name, owner_id, category, status, created_at, users(full_name)')
+      .select('id, name, owner_id, category, is_verified, is_active, created_at, users!owner_id(full_name)')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -167,7 +167,7 @@ exports.getAllShops = asyncHandler(async (req, res) => {
       name: shop.name || `Shop ${index + 1}`,
       owner: shop.users?.full_name || `Owner ${index + 1}`,
       category: shop.category || 'General',
-      status: shop.status === 'approved' ? 'Verified' : shop.status === 'rejected' ? 'Rejected' : 'Pending',
+      status: shop.is_verified ? 'Verified' : !shop.is_active ? 'Rejected' : 'Pending',
       registered: new Date(shop.created_at).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
@@ -198,9 +198,13 @@ exports.updateShopStatus = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
+    const updateData = status === 'approved'
+      ? { is_verified: true, is_active: true }
+      : { is_verified: false, is_active: false };
+
     const { data, error } = await supabase
       .from('shops')
-      .update({ status })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
@@ -256,7 +260,7 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, shop_id, category, price, is_flagged, has_active_deal, shops(name)')
+      .select('id, name, shop_id, category, current_price, is_available, shops!shop_id(name)')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -266,8 +270,8 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
       name: product.name || `Product ${index + 1}`,
       shop: product.shops?.name || `Shop ${index + 1}`,
       category: product.category || 'General',
-      price: `LKR ${product.price?.toLocaleString() || '0'}`,
-      status: product.is_flagged ? 'Flagged' : product.has_active_deal ? 'Deal' : 'Active',
+      price: `LKR ${Number(product.current_price || 0).toLocaleString()}`,
+      status: !product.is_available ? 'Inactive' : 'Active',
       initials: product.name ? product.name.split(' ')[0].substring(0, 2).toUpperCase() : 'PR',
       color: '#1a1a1a',
       textColor: '#888888',
@@ -287,15 +291,15 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
 
 // Section 10: Flag Product (Admin)
 // PATCH /api/v1/admin/products/:id/flag
-// Flags or unflags a product
+// Toggles product availability (since is_flagged column doesn't exist in schema)
 exports.flagProduct = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
-    const { is_flagged } = req.body;
+    const { is_available } = req.body;
 
     const { data, error } = await supabase
       .from('products')
-      .update({ is_flagged })
+      .update({ is_available })
       .eq('id', id)
       .select()
       .single();
@@ -304,7 +308,7 @@ exports.flagProduct = asyncHandler(async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Product ${is_flagged ? 'flagged' : 'unflagged'} successfully`,
+      message: `Product ${is_available ? 'activated' : 'deactivated'} successfully`,
       data,
     });
   } catch (err) {
@@ -364,11 +368,23 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
       .from('products')
       .select('*', { count: 'exact', head: true });
 
-    // Count active deals
-    const { data: dealsData } = await supabase
-      .from('deals')
-      .select('*')
-      .eq('is_active', true);
+    const [
+      dealsResult,
+      favoritesResult,
+      reviewsResult,
+      notificationsResult,
+      interactionsResult,
+      recentlyViewedResult,
+      userInterestsResult,
+    ] = await Promise.all([
+      supabase.from('deals').select('*', { count: 'exact', head: true }).eq('is_active', true),
+      supabase.from('favorites').select('*', { count: 'exact', head: true }),
+      supabase.from('reviews').select('*', { count: 'exact', head: true }),
+      supabase.from('notifications').select('*', { count: 'exact', head: true }),
+      supabase.from('user_interactions').select('*', { count: 'exact', head: true }),
+      supabase.from('recently_viewed').select('*', { count: 'exact', head: true }),
+      supabase.from('user_interests').select('*', { count: 'exact', head: true }),
+    ]);
 
     res.status(200).json({
       success: true,
@@ -376,7 +392,13 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
         totalUsers: userCount || 0,
         totalShops: shopCount || 0,
         totalProducts: productCount || 0,
-        activeDeals: dealsData?.length || 0,
+        activeDeals: dealsResult.count || 0,
+        totalFavorites: favoritesResult.count || 0,
+        totalReviews: reviewsResult.count || 0,
+        totalNotifications: notificationsResult.count || 0,
+        totalInteractions: interactionsResult.count || 0,
+        totalRecentlyViewed: recentlyViewedResult.count || 0,
+        totalUserInterests: userInterestsResult.count || 0,
       },
     });
   } catch (err) {
@@ -386,6 +408,146 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
     });
   }
 });
+
+// Section 13: Get Trend Data (Admin)
+// GET /api/v1/admin/trends
+exports.getTrendData = async (req, res) => {
+  try {
+    const now = new Date();
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const [usersData, productsData, dealsData, interactionsData] = await Promise.all([
+      supabase.from('users').select('created_at').gte('created_at', sixMonthsAgo.toISOString()),
+      supabase.from('products').select('created_at').gte('created_at', sixMonthsAgo.toISOString()),
+      supabase.from('deals').select('created_at, views_count').gte('created_at', sixMonthsAgo.toISOString()),
+      supabase.from('user_interactions').select('created_at, action_type').gte('created_at', sixMonthsAgo.toISOString()),
+    ]);
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        key: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'),
+        label: d.toLocaleString('default', { month: 'short' }),
+        newUsers: 0, newProducts: 0, dealViews: 0, purchases: 0, interactions: 0,
+      });
+    }
+    const getMonthKey = (dateStr) => {
+      const d = new Date(dateStr);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    };
+    (usersData.data || []).forEach((r) => { const m = months.find((mo) => mo.key === getMonthKey(r.created_at)); if (m) m.newUsers++; });
+    (productsData.data || []).forEach((r) => { const m = months.find((mo) => mo.key === getMonthKey(r.created_at)); if (m) m.newProducts++; });
+    (dealsData.data || []).forEach((r) => { const m = months.find((mo) => mo.key === getMonthKey(r.created_at)); if (m) m.dealViews += r.views_count || 0; });
+    (interactionsData.data || []).forEach((r) => {
+      const m = months.find((mo) => mo.key === getMonthKey(r.created_at));
+      if (m) { m.interactions++; if (r.action_type === 'purchase') m.purchases++; }
+    });
+    res.status(200).json({ success: true, data: months });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Section 14: Get All Deals (Admin)
+// GET /api/v1/admin/deals
+exports.getAllDeals = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('deals')
+      .select('id, title, shop_id, product_id, discount_type, discount_value, deal_price, original_price, is_active, start_date, end_date, views_count, created_at, shops!shop_id(name)')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const formatted = data.map((deal) => ({
+      id: deal.id, title: deal.title,
+      shop: deal.shops?.name || 'Unknown Shop', shopId: deal.shop_id,
+      discountType: deal.discount_type, discountValue: deal.discount_value,
+      dealPrice: deal.deal_price, originalPrice: deal.original_price,
+      isActive: deal.is_active,
+      startDate: new Date(deal.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+      endDate: new Date(deal.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+      viewsCount: deal.views_count || 0,
+      created: new Date(deal.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+    }));
+    res.status(200).json({ success: true, data: formatted });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Section 15: Toggle Deal (Admin)
+exports.toggleDeal = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body;
+    const { data, error } = await supabase.from('deals').update({ is_active }).eq('id', id).select().single();
+    if (error) throw error;
+    res.status(200).json({ success: true, message: 'Deal updated', data });
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+};
+
+// Section 16: Delete Deal (Admin)
+exports.deleteDeal = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase.from('deals').delete().eq('id', id).select().single();
+    if (error) throw error;
+    res.status(200).json({ success: true, message: 'Deal deleted', data });
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+};
+
+// Section 17: Get All Reviews (Admin)
+exports.getAllReviews = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('id, rating, comment, created_at, user_id, shop_id, users!user_id(full_name, email), shops!shop_id(name)')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const formatted = data.map((r) => ({
+      id: r.id, rating: r.rating, comment: r.comment || '',
+      user: r.users?.full_name || 'Unknown', email: r.users?.email || '',
+      shop: r.shops?.name || 'Unknown Shop', shopId: r.shop_id, userId: r.user_id,
+      created: new Date(r.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+    }));
+    res.status(200).json({ success: true, data: formatted });
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+};
+
+// Section 18: Delete Review (Admin)
+exports.deleteReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase.from('reviews').delete().eq('id', id).select().single();
+    if (error) throw error;
+    res.status(200).json({ success: true, message: 'Review deleted', data });
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+};
+
+// Section 19: Get All Notifications (Admin)
+exports.getAllNotifications = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('id, title, body, type, is_read, created_at, user_id, users!user_id(full_name, email)')
+      .order('created_at', { ascending: false }).limit(200);
+    if (error) throw error;
+    const formatted = data.map((n) => ({
+      id: n.id, title: n.title, body: n.body || '', type: n.type, isRead: n.is_read,
+      user: n.users?.full_name || 'Unknown', email: n.users?.email || '', userId: n.user_id,
+      created: new Date(n.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+    }));
+    res.status(200).json({ success: true, data: formatted });
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+};
+
+// Section 20: Delete Notification (Admin)
+exports.deleteNotification = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase.from('notifications').delete().eq('id', id).select().single();
+    if (error) throw error;
+    res.status(200).json({ success: true, message: 'Notification deleted', data });
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+};
 
 // Helper function to format time ago
 const getTimeAgo = (date) => {

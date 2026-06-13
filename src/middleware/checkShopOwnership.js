@@ -6,7 +6,7 @@
 // Ensures shop owners can only modify their own shops.
 
 // Section 1: Dependencies
-const supabase = require('../config/supabase');
+const { shops } = require('../services');
 
 // Section 2: Ownership Check Logic
 // Flow:
@@ -19,13 +19,10 @@ const checkShopOwnership = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const { data, error } = await supabase
-      .from('shops')
-      .select('id, owner_id')
-      .eq('id', id)
-      .single();
+    // Use shops service to verify ownership
+    const isOwner = await shops.isShopOwner(req.user.id, id);
 
-    if (error || !data) {
+    if (isOwner === null) {
       return res.status(404).json({
         success: false,
         error: 'Shop not found',
@@ -33,10 +30,7 @@ const checkShopOwnership = async (req, res, next) => {
     }
 
     // Allow access if user is the owner or has admin role
-    if (
-      data.owner_id !== req.user.id &&
-      req.user.role !== 'admin'
-    ) {
+    if (!isOwner && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         error: 'Unauthorized shop access',

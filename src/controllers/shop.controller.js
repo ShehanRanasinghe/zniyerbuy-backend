@@ -5,7 +5,7 @@
 // Each shop is owned by a user with the 'shop_owner' role and contains products and deals.
 
 // Section 1: Dependencies
-const supabase = require('../config/supabase');
+const { shops } = require('../services');
 const asyncHandler = require('../utils/asyncHandler');
 
 // Section 2: Create Shop
@@ -19,32 +19,36 @@ const asyncHandler = require('../utils/asyncHandler');
 // Why owner_id comes from req.user.id: Ensures the shop is always linked to the authenticated user, preventing users from creating shops on behalf of others.
 
 exports.createShop = asyncHandler(async (req, res) => {
-  
   try {
     const {
-      shop_name,
+      name,
       description,
+      category,
       address,
+      city,
       latitude,
       longitude,
-      contact_number,
+      phone,
+      email,
+      logo_url,
+      cover_image_url,
     } = req.body;
 
-    const { data, error } = await supabase
-      .from('shops')
-      .insert([
-        {
-          owner_id: req.user.id,
-          shop_name,
-          description,
-          address,
-          latitude,
-          longitude,
-          contact_number,
-        },
-      ])
-      .select()
-      .single();
+    // Use shops service to create shop
+    const { data, error } = await shops.createShop({
+      owner_id: req.user.id,
+      name,
+      description,
+      category: category || 'other',
+      address,
+      city,
+      latitude,
+      longitude,
+      phone,
+      email,
+      logo_url,
+      cover_image_url,
+    });
 
     if (error) throw error;
 
@@ -92,27 +96,15 @@ exports.getNearbyShops = async (req, res) => {
       });
     }
 
-    // Query shops within a rough bounding box and calculate Haversine distance in the SELECT clause
-    const { data, error } = await supabase
-      .from('shops')
-      .select(`*, (6371 * acos(cos(radians(${latitude})) * cos(radians(latitude)) * cos(radians(longitude) - radians(${longitude})) + sin(radians(${latitude})) * sin(radians(latitude)))) AS distance`)
-      .gte('latitude', latitude - 1)
-      .lte('latitude', latitude + 1)
-      .gte('longitude', longitude - 1)
-      .lte('longitude', longitude + 1)
-      .order('created_at', { ascending: false });
+    // Use shops service to find nearby shops
+    const { data, error } = await shops.getNearbyShops(latitude, longitude, radius);
 
     if (error) throw error;
 
-    // Filter results in JS to enforce exact radius boundary because the bounding box is only an approximation
-    const filteredData = data.filter(
-      (shop) => shop.distance <= radius
-    );
-
     res.status(200).json({
       success: true,
-      count: filteredData.length,
-      data: filteredData,
+      count: data.length,
+      data,
     });
   } catch (err) {
     res.status(500).json({
@@ -133,24 +125,8 @@ exports.getShopById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { data, error } = await supabase
-      .from('shops')
-      .select(`
-        *,
-        products (
-          id,
-          product_name,
-          price,
-          image_url
-        ),
-        deals (
-          id,
-          title,
-          discount_percentage
-        )
-      `)
-      .eq('id', id)
-      .single();
+    // Use shops service to get shop with products and deals
+    const { data, error } = await shops.getShopWithDetails(id);
 
     if (error) throw error;
 
@@ -176,16 +152,15 @@ exports.getShopById = async (req, res) => {
 exports.updateShopImage = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
-    const { image_url } = req.body;
+    const { logo_url, cover_image_url } = req.body;
 
-    const { data, error } = await supabase
-      .from('shops')
-      .update({
-        image_url,
-      })
-      .eq('id', id)
-      .select()
-      .single();
+    // Update either logo or cover image based on what's provided
+    const updateData = {};
+    if (logo_url) updateData.logo_url = logo_url;
+    if (cover_image_url) updateData.cover_image_url = cover_image_url;
+
+    // Use shops service to update shop
+    const { data, error } = await shops.updateShop(id, updateData);
 
     if (error) throw error;
 

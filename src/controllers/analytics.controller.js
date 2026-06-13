@@ -225,7 +225,7 @@ exports.getUserActivityStats = asyncHandler(async (req, res) => {
     // Count all records in activity tables in parallel
     const [
       recentViews,
-      recentSearches,
+      searchHistory,
       recentFavorites,
     ] = await Promise.all([
       supabase
@@ -254,7 +254,7 @@ exports.getUserActivityStats = asyncHandler(async (req, res) => {
       success: true,
       stats: {
         totalViews: recentViews.count || 0,
-        totalSearches: recentSearches.count || 0,
+        totalSearches: searchHistory.count || 0,
         totalFavorites: recentFavorites.count || 0,
       },
     });

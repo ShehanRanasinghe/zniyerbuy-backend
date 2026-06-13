@@ -22,8 +22,9 @@ exports.createNotification = asyncHandler(async (req, res) => {
     const {
       user_id,
       title,
-      message,
+      body,
       type,
+      related_id,
     } = req.body;
 
     const { data, error } = await supabase
@@ -32,8 +33,9 @@ exports.createNotification = asyncHandler(async (req, res) => {
         {
           user_id,
           title,
-          message,
-          type,
+          body,
+          type: type || 'system',
+          related_id,
         },
       ])
       .select()
