@@ -161,7 +161,7 @@ exports.toggleUserStatus = asyncHandler(async (req, res) => {
   }
 });
 
-// Section 6: Delete User (Admin) - DEPRECATED
+// Section 6: Delete User (Admin)
 // DELETE /api/v1/admin/users/:id
 // Soft deletes a user by marking as inactive
 exports.deleteUser = asyncHandler(async (req, res) => {
