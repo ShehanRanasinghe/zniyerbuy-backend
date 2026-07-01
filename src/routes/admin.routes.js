@@ -13,6 +13,7 @@ const {
   getAllUsers,
   getRecentUsers,
   updateUserRole,
+  toggleUserStatus,
   deleteUser,
   getAllShops,
   updateShopStatus,
@@ -35,6 +36,7 @@ const {
 router.get('/users', protect, authorize('admin'), getAllUsers);
 router.get('/users/recent', protect, authorize('admin'), getRecentUsers);
 router.patch('/users/:id/role', protect, authorize('admin'), updateUserRole);
+router.patch('/users/:id/status', protect, authorize('admin'), toggleUserStatus);
 router.delete('/users/:id', protect, authorize('admin'), deleteUser);
 
 // Admin Shop Management Routes
