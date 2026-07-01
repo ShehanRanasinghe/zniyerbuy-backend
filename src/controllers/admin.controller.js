@@ -26,7 +26,8 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
       name: user.full_name || `User ${index + 1}`,
       email: user.email || 'N/A',
       role: user.role === 'admin' ? 'Admin' : user.role === 'shop_owner' ? 'Seller' : 'User',
-      status: 'Active',
+      status: user.is_active !== false ? 'Active' : 'Inactive',
+      isActive: user.is_active !== false,
       joined: new Date(user.created_at).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
@@ -121,7 +122,46 @@ exports.updateUserRole = asyncHandler(async (req, res) => {
   }
 });
 
-// Section 5: Delete User (Admin)
+
+// Section 5: Toggle User Status (Admin)
+// PATCH /api/v1/admin/users/:id/status
+// Toggles user account status between active and inactive (soft delete)
+exports.toggleUserStatus = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body;
+
+    // Validate is_active is a boolean
+    if (typeof is_active !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        error: 'is_active must be a boolean value',
+      });
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({ is_active, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: `User account ${is_active ? 'activated' : 'deactivated'} successfully`,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
+// Section 6: Delete User (Admin) - DEPRECATED
 // DELETE /api/v1/admin/users/:id
 // Soft deletes a user by marking as inactive
 exports.deleteUser = asyncHandler(async (req, res) => {
@@ -150,7 +190,7 @@ exports.deleteUser = asyncHandler(async (req, res) => {
   }
 });
 
-// Section 6: Get All Shops (Admin)
+// Section 7: Get All Shops (Admin)
 // GET /api/v1/admin/shops
 // Returns all shops for admin management and verification
 exports.getAllShops = asyncHandler(async (req, res) => {
@@ -190,7 +230,7 @@ exports.getAllShops = asyncHandler(async (req, res) => {
   }
 });
 
-// Section 7: Update Shop Status (Admin)
+// Section 8: Update Shop Status (Admin)
 // PATCH /api/v1/admin/shops/:id/verify
 // Verifies or rejects a shop
 exports.updateShopStatus = asyncHandler(async (req, res) => {
@@ -224,7 +264,7 @@ exports.updateShopStatus = asyncHandler(async (req, res) => {
   }
 });
 
-// Section 8: Delete Shop (Admin)
+// Section 9: Delete Shop (Admin)
 // DELETE /api/v1/admin/shops/:id
 // Permanently deletes a shop
 exports.deleteShop = asyncHandler(async (req, res) => {
@@ -253,7 +293,7 @@ exports.deleteShop = asyncHandler(async (req, res) => {
   }
 });
 
-// Section 9: Get All Products (Admin)
+// Section 10: Get All Products (Admin)
 // GET /api/v1/admin/products
 // Returns all products for admin monitoring
 exports.getAllProducts = asyncHandler(async (req, res) => {
@@ -289,7 +329,7 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
   }
 });
 
-// Section 10: Flag Product (Admin)
+// Section 11: Flag Product (Admin)
 // PATCH /api/v1/admin/products/:id/flag
 // Toggles product availability (since is_flagged column doesn't exist in schema)
 exports.flagProduct = asyncHandler(async (req, res) => {
@@ -319,7 +359,7 @@ exports.flagProduct = asyncHandler(async (req, res) => {
   }
 });
 
-// Section 11: Delete Product (Admin)
+// Section 12: Delete Product (Admin)
 // DELETE /api/v1/admin/products/:id
 // Permanently deletes a product
 exports.deleteProduct = asyncHandler(async (req, res) => {
@@ -348,7 +388,7 @@ exports.deleteProduct = asyncHandler(async (req, res) => {
   }
 });
 
-// Section 12: Get Dashboard Stats (Admin)
+// Section 13: Get Dashboard Stats (Admin)
 // GET /api/v1/admin/stats
 // Returns aggregated statistics for the analytics dashboard
 exports.getDashboardStats = asyncHandler(async (req, res) => {
@@ -409,7 +449,7 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
   }
 });
 
-// Section 13: Get Trend Data (Admin)
+// Section 14: Get Trend Data (Admin)
 // GET /api/v1/admin/trends
 exports.getTrendData = async (req, res) => {
   try {
@@ -447,7 +487,7 @@ exports.getTrendData = async (req, res) => {
   }
 };
 
-// Section 14: Get All Deals (Admin)
+// Section 15: Get All Deals (Admin)
 // GET /api/v1/admin/deals
 exports.getAllDeals = async (req, res) => {
   try {
@@ -473,7 +513,7 @@ exports.getAllDeals = async (req, res) => {
   }
 };
 
-// Section 15: Toggle Deal (Admin)
+// Section 16: Toggle Deal (Admin)
 exports.toggleDeal = async (req, res) => {
   try {
     const { id } = req.params;
@@ -484,7 +524,7 @@ exports.toggleDeal = async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 };
 
-// Section 16: Delete Deal (Admin)
+// Section 17: Delete Deal (Admin)
 exports.deleteDeal = async (req, res) => {
   try {
     const { id } = req.params;
@@ -494,7 +534,7 @@ exports.deleteDeal = async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 };
 
-// Section 17: Get All Reviews (Admin)
+// Section 18: Get All Reviews (Admin)
 exports.getAllReviews = async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -512,7 +552,7 @@ exports.getAllReviews = async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 };
 
-// Section 18: Delete Review (Admin)
+// Section 19: Delete Review (Admin)
 exports.deleteReview = async (req, res) => {
   try {
     const { id } = req.params;
@@ -522,7 +562,7 @@ exports.deleteReview = async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 };
 
-// Section 19: Get All Notifications (Admin)
+// Section 20: Get All Notifications (Admin)
 exports.getAllNotifications = async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -539,7 +579,7 @@ exports.getAllNotifications = async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 };
 
-// Section 20: Delete Notification (Admin)
+// Section 21: Delete Notification (Admin)
 exports.deleteNotification = async (req, res) => {
   try {
     const { id } = req.params;
