@@ -64,10 +64,10 @@ app.use(express.json({ limit: '10mb' }));
 app.use('/api', apiLimiter);
 
 // Section 7: Swagger Documentation Route
-// Mounts the Swagger UI at /api-docs for interactive API exploration.
+// Mounts the Swagger UI at /docs for interactive API exploration.
 // Why: Developers and testers can see all endpoints, request/response schemas, and try out API calls without external tools like Postman.
 app.use(
-  '/api-docs',
+  '/docs',
   swaggerUi.serve,
   swaggerUi.setup(swaggerSpec)
 );

@@ -26,6 +26,44 @@ const {
 //   Middleware chain: protect -> getFavorites
 // POST / - Add a product to favorites
 //   Middleware chain: protect -> addFavoriteValidator -> validate -> addFavorite
+/**
+ * @swagger
+ * /favorites:
+ *   get:
+ *     summary: Get user's favorite products
+ *     tags: [Favorites]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of favorite products
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Add product to favorites
+ *     tags: [Favorites]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - product_id
+ *             properties:
+ *               product_id:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       201:
+ *         description: Product added to favorites
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
 router.get('/', protect, getFavorites);
 
 router.post(

@@ -24,6 +24,34 @@ const {
 // POST /shop-image - Upload a shop image (authenticated)
 //   Middleware chain: protect -> upload.single('image') -> uploadShopImage
 //   Same flow but targets the 'shop-images' storage bucket.
+/**
+ * @swagger
+ * /uploads/product-image:
+ *   post:
+ *     summary: Upload a product image
+ *     tags: [Uploads]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - image
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Image uploaded successfully
+ *       400:
+ *         description: No file provided
+ *       401:
+ *         description: Unauthorized
+ */
 router.post(
   '/product-image',
   protect,
@@ -31,6 +59,34 @@ router.post(
   uploadProductImage
 );
 
+/**
+ * @swagger
+ * /uploads/shop-image:
+ *   post:
+ *     summary: Upload a shop image
+ *     tags: [Uploads]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - image
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Image uploaded successfully
+ *       400:
+ *         description: No file provided
+ *       401:
+ *         description: Unauthorized
+ */
 router.post(
   '/shop-image',
   protect,

@@ -28,6 +28,22 @@ const {
 // GET /top-categories - Product count by category
 // GET /user-activity - Total views, searches, favorites platform-wide
 // GET /popular-shops - Shops ranked by product engagement
+/**
+ * @swagger
+ * /analytics/dashboard:
+ *   get:
+ *     summary: Get platform-wide dashboard statistics
+ *     tags: [Analytics - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard statistics
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin only
+ */
 router.get(
   '/dashboard',
   protect,
@@ -35,6 +51,22 @@ router.get(
   getDashboardStats
 );
 
+/**
+ * @swagger
+ * /analytics/top-categories:
+ *   get:
+ *     summary: Get top product categories
+ *     tags: [Analytics - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Top categories by product count
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin only
+ */
 router.get(
   '/top-categories',
   protect,
@@ -42,6 +74,22 @@ router.get(
   getTopCategories
 );
 
+/**
+ * @swagger
+ * /analytics/user-activity:
+ *   get:
+ *     summary: Get user activity statistics
+ *     tags: [Analytics - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User activity metrics
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin only
+ */
 router.get(
   '/user-activity',
   protect,
@@ -49,6 +97,22 @@ router.get(
   getUserActivityStats
 );
 
+/**
+ * @swagger
+ * /analytics/popular-shops:
+ *   get:
+ *     summary: Get most popular shops
+ *     tags: [Analytics - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Popular shops by engagement
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin only
+ */
 router.get(
   '/popular-shops',
   protect,
@@ -61,6 +125,22 @@ router.get(
 // GET /seller - Seller's total shops, products, deals, reviews
 // GET /seller/top-products - Seller's top 10 products by score
 // GET /seller/performance - Seller's aggregate engagement metrics
+/**
+ * @swagger
+ * /analytics/seller:
+ *   get:
+ *     summary: Get seller statistics
+ *     tags: [Analytics - Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Seller's shop and product statistics
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Shop owner or admin only
+ */
 router.get(
   '/seller',
   protect,
@@ -68,6 +148,22 @@ router.get(
   getSellerStats
 );
 
+/**
+ * @swagger
+ * /analytics/seller/top-products:
+ *   get:
+ *     summary: Get seller's top products
+ *     tags: [Analytics - Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Top 10 products by engagement score
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Shop owner or admin only
+ */
 router.get(
   '/seller/top-products',
   protect,
@@ -75,6 +171,22 @@ router.get(
   getTopProducts
 );
 
+/**
+ * @swagger
+ * /analytics/seller/performance:
+ *   get:
+ *     summary: Get seller performance metrics
+ *     tags: [Analytics - Seller]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Aggregate engagement metrics
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Shop owner or admin only
+ */
 router.get(
   '/seller/performance',
   protect,

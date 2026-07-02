@@ -27,6 +27,53 @@ const {
 // POST / - Create a notification for a user
 //   Middleware chain: protect -> createNotificationValidator -> validate -> createNotification
 //   Why validate: Ensures user_id, title, and message are provided.
+/**
+ * @swagger
+ * /notifications:
+ *   get:
+ *     summary: Get user's notifications
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of user notifications
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Create a notification
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - user_id
+ *               - title
+ *               - message
+ *             properties:
+ *               user_id:
+ *                 type: string
+ *                 format: uuid
+ *               title:
+ *                 type: string
+ *               message:
+ *                 type: string
+ *               type:
+ *                 type: string
+ *                 enum: [info, warning, success, error]
+ *     responses:
+ *       201:
+ *         description: Notification created
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
 router.get('/', protect, getUserNotifications);
 
 router.post(

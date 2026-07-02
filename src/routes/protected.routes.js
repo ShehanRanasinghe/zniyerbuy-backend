@@ -13,6 +13,20 @@ const { protect } = require('../middleware/auth');
 // GET /profile - Returns the authenticated user's data
 //   Middleware chain: protect -> inline handler
 //   Why inline handler: This is a test/debug route, so a separate controller isn't necessary for this simple response.
+/**
+ * @swagger
+ * /protected/profile:
+ *   get:
+ *     summary: Test protected route - returns authenticated user data
+ *     tags: [System]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Protected route accessed successfully
+ *       401:
+ *         description: Unauthorized
+ */
 router.get('/profile', protect, async (req, res) => {
   res.status(200).json({
     success: true,

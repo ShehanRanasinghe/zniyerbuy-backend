@@ -17,6 +17,18 @@ const supabase = require('../config/supabase');
 //   If it fails, returns the error.
 //   Why select from 'users': It's a table that should always exist in the schema. limit(1) keeps the query lightweight.
 //   WARNING: This route should be disabled or protected in production to prevent exposing user data.
+/**
+ * @swagger
+ * /test/db-test:
+ *   get:
+ *     summary: Test database connectivity
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Database connected successfully
+ *       500:
+ *         description: Database connection failed
+ */
 router.get('/db-test', async (req, res) => {
   try {
     const { data, error } = await supabase

@@ -16,6 +16,16 @@ const {
 // Section 3: Route Definition
 // GET / - Returns server health status (public)
 //   No auth required. Monitoring tools need unauthenticated access.
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: API health check
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: API is healthy and running
+ */
 router.get('/', healthCheck);
 
 module.exports = router;
