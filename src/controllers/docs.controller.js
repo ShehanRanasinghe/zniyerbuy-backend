@@ -15,8 +15,10 @@ exports.getApiDocs = (req, res) => {
     success: true,
     project: 'ZNIYERBUY API',
     version: 'v1',
+    swaggerUi: '/docs',
     endpoints: {
       auth: '/api/v1/auth',
+      admin: '/api/v1/admin',
       shops: '/api/v1/shops',
       products: '/api/v1/products',
       deals: '/api/v1/deals',
@@ -24,6 +26,13 @@ exports.getApiDocs = (req, res) => {
       reviews: '/api/v1/reviews',
       notifications: '/api/v1/notifications',
       interactions: '/api/v1/interactions',
+      uploads: '/api/v1/uploads',
+      analytics: '/api/v1/analytics',
+      ai: '/api/v1/ai',
+      health: '/api/v1/health',
+      system: '/api/v1/system',
+      test: '/api/v1/test',
+      protected: '/api/v1/protected',
     },
   });
 };

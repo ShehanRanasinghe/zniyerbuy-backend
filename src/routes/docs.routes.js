@@ -15,6 +15,16 @@ const {
 // Section 3: Route Definition
 // GET / - Returns JSON listing of all API endpoint groups (public)
 //   No auth required. This is a reference/discovery endpoint.
+/**
+ * @swagger
+ * /docs:
+ *   get:
+ *     summary: Get API documentation directory
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: List of available API endpoints
+ */
 router.get('/', getApiDocs);
 
 module.exports = router;

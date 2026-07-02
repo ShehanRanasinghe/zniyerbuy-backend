@@ -16,6 +16,16 @@ const {
 // Section 3: Route Definition
 // GET /health - Returns detailed system status (public)
 //   Includes service name, version, environment, uptime, and timestamp.
+/**
+ * @swagger
+ * /system/health:
+ *   get:
+ *     summary: Get detailed system health status
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: System health information
+ */
 router.get('/health', getHealth);
 
 module.exports = router;

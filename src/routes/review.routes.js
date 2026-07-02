@@ -27,8 +27,63 @@ const {
 // POST / - Create a new review (authenticated)
 //   Middleware chain: protect -> createReviewValidator -> validate -> createReview
 //   Why protect: Reviews need an authenticated user_id to record who wrote them.
+/**
+ * @swagger
+ * /reviews/shop/{shopId}:
+ *   get:
+ *     summary: Get all reviews for a shop
+ *     tags: [Reviews]
+ *     parameters:
+ *       - in: path
+ *         name: shopId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Shop ID
+ *     responses:
+ *       200:
+ *         description: List of shop reviews
+ *       404:
+ *         description: Shop not found
+ */
 router.get('/shop/:shopId', getShopReviews);
 
+/**
+ * @swagger
+ * /reviews:
+ *   post:
+ *     summary: Create a new review
+ *     tags: [Reviews]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - shop_id
+ *               - rating
+ *               - comment
+ *             properties:
+ *               shop_id:
+ *                 type: string
+ *                 format: uuid
+ *               rating:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 5
+ *               comment:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Review created successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
 router.post(
   '/',
   protect,
