@@ -72,7 +72,22 @@ app.use(
   swaggerUi.setup(swaggerSpec)
 );
 
-// Section 8: System & Health Check Routes
+// Section 8: Root Route
+// Returns a friendly welcome response when visiting the base URL (http://localhost:5000/).
+// Why: Without this, the notFound middleware catches GET / and returns a confusing 404 error.
+// This gives developers and testers a clear entry point with links to all key endpoints.
+app.get('/', (req, res) => {
+  const base = `${req.protocol}://${req.get('host')}`;
+  res.status(200).json({
+    success: true,
+    message: 'Welcome to ZNIYERBUY API',
+    docs:    `${base}/docs`,
+    health:  `${base}/health`,
+    api:     `${base}/api/v1`,
+  });
+});
+
+// Section 9: System & Health Check Routes
 // These are lightweight endpoints used by monitoring tools and load balancers to verify the API is alive and responding.
 // Why: Allows uptime monitoring services (e.g., AWS ALB, UptimeRobot) to confirm the server is healthy without hitting business logic.
 app.use('/api/v1/system', systemRoutes);
