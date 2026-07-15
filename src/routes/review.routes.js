@@ -50,6 +50,67 @@ router.get('/shop/:shopId', getShopReviews);
 
 /**
  * @swagger
+ * /reviews/product/{productId}:
+ *   get:
+ *     summary: Get all reviews for a product
+ *     tags: [Reviews]
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Product ID
+ *     responses:
+ *       200:
+ *         description: List of product reviews
+ *       404:
+ *         description: Product not found
+ */
+router.get('/product/:productId', require('../controllers/review.controller').getProductReviews);
+
+/**
+ * @swagger
+ * /reviews/{reviewId}/reply:
+ *   post:
+ *     summary: Reply to a review
+ *     tags: [Reviews]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: reviewId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Review ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - reply
+ *             properties:
+ *               reply:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Reply added successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Review not found
+ */
+router.post(
+  '/:reviewId/reply',
+  protect,
+  require('../controllers/review.controller').replyToReview
+);
+
+/**
+ * @swagger
  * /reviews:
  *   post:
  *     summary: Create a new review
