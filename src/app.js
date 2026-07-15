@@ -118,6 +118,7 @@ app.use('/api/v1/protected', require('./routes/protected.routes'));
 app.use('/api/v1/shops', require('./routes/shop.routes'));
 app.use('/api/v1/products', require('./routes/product.routes'));
 app.use('/api/v1/deals', require('./routes/deal.routes'));
+app.use('/api/v1/orders', require('./routes/order.routes'));
 app.use('/api/v1/favorites', require('./routes/favorite.routes'));
 app.use('/api/v1/reviews', require('./routes/review.routes'));
 app.use('/api/v1/notifications', require('./routes/notification.routes'));
