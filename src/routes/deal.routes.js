@@ -99,6 +99,86 @@ const {
  */
 router.get('/', getDeals);
 
+/**
+ * @swagger
+ * /deals/{dealId}:
+ *   get:
+ *     summary: Get a deal by ID
+ *     tags: [Deals]
+ *     parameters:
+ *       - in: path
+ *         name: dealId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Deal ID
+ *     responses:
+ *       200:
+ *         description: Deal data
+ *       404:
+ *         description: Deal not found
+ *   patch:
+ *     summary: Update a deal
+ *     tags: [Deals]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: dealId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Deal ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               discount_percentage:
+ *                 type: number
+ *               start_date:
+ *                 type: string
+ *                 format: date-time
+ *               end_date:
+ *                 type: string
+ *                 format: date-time
+ *     responses:
+ *       200:
+ *         description: Deal updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Deal not found
+ *   delete:
+ *     summary: Delete a deal
+ *     tags: [Deals]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: dealId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Deal ID
+ *     responses:
+ *       200:
+ *         description: Deal deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Deal not found
+ */
+router.get('/:dealId', require('../controllers/deal.controller').getDeal);
+router.patch('/:dealId', protect, require('../controllers/deal.controller').updateDeal);
+router.delete('/:dealId', protect, require('../controllers/deal.controller').deleteDeal);
+
 router.post(
   '/',
   protect,

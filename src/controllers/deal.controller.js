@@ -102,3 +102,92 @@ exports.getDeals = async (req, res) => {
     });
   }
 };
+
+// Section 4: Get Deal By ID
+// GET /api/v1/deals/:dealId
+exports.getDeal = asyncHandler(async (req, res) => {
+  try {
+    const { dealId } = req.params;
+
+    const { data, error } = await supabase
+      .from('deals')
+      .select(`
+        *,
+        shops (
+          id,
+          name
+        )
+      `)
+      .eq('id', dealId)
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
+// Section 5: Update Deal
+// PATCH /api/v1/deals/:dealId
+exports.updateDeal = asyncHandler(async (req, res) => {
+  try {
+    const { dealId } = req.params;
+    const updateFields = req.body;
+
+    const { data, error } = await supabase
+      .from('deals')
+      .update(updateFields)
+      .eq('id', dealId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: 'Deal updated successfully',
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
+// Section 6: Delete Deal
+// DELETE /api/v1/deals/:dealId
+exports.deleteDeal = asyncHandler(async (req, res) => {
+  try {
+    const { dealId } = req.params;
+
+    const { data, error } = await supabase
+      .from('deals')
+      .delete()
+      .eq('id', dealId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: 'Deal deleted successfully',
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
