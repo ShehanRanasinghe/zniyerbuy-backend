@@ -122,6 +122,15 @@ exports.getShopById = async (shopId, includeProducts = false, includeDeals = fal
 };
 
 /**
+ * Get shop by ID including products and deals (convenience alias)
+ * @param {string} shopId - Shop UUID
+ * @returns {Promise<{data, error}>}
+ */
+exports.getShopWithDetails = async (shopId) => {
+  return await exports.getShopById(shopId, true, true);
+};
+
+/**
  * Get shops by owner ID
  * @param {string} ownerId - Owner user ID
  * @returns {Promise<{data, error}>}
