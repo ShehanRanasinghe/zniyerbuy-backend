@@ -65,7 +65,20 @@ exports.getSellerStats = asyncHandler(async (req, res) => {
       .select('id')
       .eq('owner_id', ownerId);
 
-    const shopIds = shops.map((shop) => shop.id);
+    const shopIds = (shops || []).map((shop) => shop.id);
+
+    // Guard: return empty stats if no shops found yet (e.g. fresh account or empty DB)
+    if (shopIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        stats: {
+          totalShops: 0,
+          totalProducts: 0,
+          totalDeals: 0,
+          totalReviews: 0,
+        },
+      });
+    }
 
     // Count products, deals, and reviews for all seller's shops in parallel
     const [
@@ -130,7 +143,16 @@ exports.getTopProducts = asyncHandler(async (req, res) => {
       .select('id')
       .eq('owner_id', ownerId);
 
-    const shopIds = shops.map((shop) => shop.id);
+    const shopIds = (shops || []).map((shop) => shop.id);
+
+    // Guard: return empty list if no shops found yet
+    if (shopIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        count: 0,
+        data: [],
+      });
+    }
 
     // Get top 10 products by recommendation score across all seller's shops
     const { data, error } = await supabase
