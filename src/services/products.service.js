@@ -178,6 +178,15 @@ exports.getAllProducts = async (options = {}) => {
 };
 
 /**
+ * Get products with pagination and filters (alias for getAllProducts)
+ * @param {object} options - Query options (same as getAllProducts)
+ * @returns {Promise<{data, error, page, limit, count}>}
+ */
+exports.getProducts = async (options = {}) => {
+  return await exports.getAllProducts(options);
+};
+
+/**
  * Update product
  * @param {string} productId - Product UUID
  * @param {object} updates - Fields to update

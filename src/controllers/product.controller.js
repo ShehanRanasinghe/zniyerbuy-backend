@@ -581,15 +581,15 @@ exports.getProductById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Use recommendation service to track view and update scores
-    if (req.user) {
-      await recommendation.trackProductView(req.user.id, id);
-    }
-
-    // Use products service to get product details
+    // Fetch product details first so we have the category for interest tracking
     const { data, error } = await products.getProductById(id);
 
     if (error) throw error;
+
+    // Track the view after successful fetch — pass category for interest score update
+    if (req.user) {
+      await recommendation.trackProductView(id, req.user.id, data?.category || null);
+    }
 
     res.status(200).json({
       success: true,
