@@ -14,6 +14,7 @@
 //   - FIREBASE_CLIENT_EMAIL: service account email for Firebase Admin SDK
 const requiredEnvVars = [
   'PORT',
+  'DATABASE_URL',
   'SUPABASE_URL',
   'SUPABASE_SERVICE_KEY',
   'FIREBASE_PROJECT_ID',
