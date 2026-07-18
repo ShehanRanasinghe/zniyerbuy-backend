@@ -24,11 +24,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    original_price: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
-    },
-    current_price: {
+    price: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
     },
