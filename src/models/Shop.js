@@ -87,8 +87,8 @@ module.exports = (sequelize, DataTypes) => {
     Shop.belongsTo(models.User, { foreignKey: 'owner_id', as: 'owner' });
     // A shop has many products
     Shop.hasMany(models.Product, { foreignKey: 'shop_id', as: 'products' });
-    // A shop has many deals
-    Shop.hasMany(models.Deal, { foreignKey: 'shop_id', as: 'deals' });
+    // A shop has many discounts
+    Shop.hasMany(models.Discounts, { foreignKey: 'shop_id', as: 'discounts' });
     // A shop has many reviews
     Shop.hasMany(models.Review, { foreignKey: 'shop_id', as: 'reviews' });
     // A shop has many orders

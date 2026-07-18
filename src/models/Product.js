@@ -73,8 +73,8 @@ module.exports = (sequelize, DataTypes) => {
   Product.associate = (models) => {
     // A product belongs to a shop
     Product.belongsTo(models.Shop, { foreignKey: 'shop_id', as: 'shop' });
-    // A product can be referenced by deals
-    Product.hasMany(models.Deal, { foreignKey: 'product_id', as: 'deals' });
+    // A product can be referenced by discounts
+    Product.hasMany(models.Discounts, { foreignKey: 'product_id', as: 'discounts' });
     // A product can have reviews
     Product.hasMany(models.Review, { foreignKey: 'product_id', as: 'reviews' });
   };
