@@ -25,7 +25,7 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
     ] = await Promise.all([
       supabase.from('products').select('*', { count: 'exact', head: true }),
       supabase.from('shops').select('*', { count: 'exact', head: true }),
-      supabase.from('deals').select('*', { count: 'exact', head: true }),
+      supabase.from('discounts').select('*', { count: 'exact', head: true }),
       supabase.from('users').select('*', { count: 'exact', head: true }),
     ]);
 
@@ -95,7 +95,7 @@ exports.getSellerStats = asyncHandler(async (req, res) => {
         .in('shop_id', shopIds),
 
       supabase
-        .from('deals')
+        .from('discounts')
         .select('*', {
           count: 'exact',
           head: true,

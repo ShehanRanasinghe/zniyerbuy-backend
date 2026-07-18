@@ -45,7 +45,7 @@ exports.isProductOwner = async (userId, productId) => {
  */
 exports.isDealActive = async (dealId) => {
   const { data, error } = await supabase
-    .from('deals')
+    .from('discounts')
     .select('is_active, start_date, end_date')
     .eq('id', dealId)
     .single();
