@@ -23,8 +23,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
       shop_id,
       name,
       description,
-      original_price,
-      current_price,
+      price,
       unit,
       stock_quantity,
       image_url,
@@ -36,8 +35,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
       shop_id,
       name,
       description,
-      original_price,
-      current_price: current_price || original_price,
+      price,
       unit: unit || 'piece',
       stock_quantity,
       image_url,
@@ -59,7 +57,31 @@ exports.createProduct = asyncHandler(async (req, res) => {
   }
 });
 
-// Section 3: Get Products (Paginated & Filterable)
+// Section 3: Update Product
+// PATCH /api/v1/products/:id
+// Updates one or more product fields for the authenticated shop owner or admin.
+exports.updateProduct = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const { data, error } = await products.updateProduct(id, updates);
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: 'Product updated successfully',
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
+// Section 4: Get Products (Paginated & Filterable)
 // GET /api/v1/products?page=1&limit=10&category=...&sort=...&keyword=...
 // Retrieves a paginated list of products with optional filtering by category, keyword search, and sorting.
 // Query Parameters:
