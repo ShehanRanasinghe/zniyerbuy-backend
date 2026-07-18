@@ -32,6 +32,8 @@ exports.createProduct = async (productData) => {
     category,
   } = productData;
 
+  const now = new Date();
+
   return await supabase
     .from('products')
     .insert([
@@ -45,6 +47,8 @@ exports.createProduct = async (productData) => {
         stock_quantity,
         image_url,
         category,
+        created_at: now,
+        updated_at: now,
       },
     ])
     .select()
