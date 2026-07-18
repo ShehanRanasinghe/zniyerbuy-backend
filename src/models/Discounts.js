@@ -1,8 +1,8 @@
-// Deal Model — Represents a promotional deal created by a shop owner
-// Deals can optionally be linked to specific products.
+// Discounts Model — Represents promotions and deals created by a shop owner
+// It supports both the deal form and the promotion form fields from the shop web app.
 
 module.exports = (sequelize, DataTypes) => {
-  const Deal = sequelize.define('Deal', {
+  const Discount = sequelize.define('Discounts', {
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
@@ -32,21 +32,43 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    discount_kind: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'deal',
+    },
+    occasion_type: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     discount_type: {
       type: DataTypes.STRING,
+      allowNull: true,
       defaultValue: 'percentage',
     },
     discount_value: {
       type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
+      allowNull: true,
+    },
+    discount_percentage: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
     },
     original_price: {
       type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
+      allowNull: true,
+    },
+    price: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
     },
     deal_price: {
       type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
+      allowNull: true,
+    },
+    discounted_price: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
     },
     image_url: {
       type: DataTypes.STRING,
@@ -65,17 +87,15 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: true,
     },
   }, {
-    tableName: 'deals',
+    tableName: 'discounts',
     underscored: true,
     timestamps: true,
   });
 
-  Deal.associate = (models) => {
-    // A deal belongs to a shop
-    Deal.belongsTo(models.Shop, { foreignKey: 'shop_id', as: 'shop' });
-    // A deal can belong to a product
-    Deal.belongsTo(models.Product, { foreignKey: 'product_id', as: 'product' });
+  Discount.associate = (models) => {
+    Discount.belongsTo(models.Shop, { foreignKey: 'shop_id', as: 'shop' });
+    Discount.belongsTo(models.Product, { foreignKey: 'product_id', as: 'product' });
   };
 
-  return Deal;
+  return Discount;
 };

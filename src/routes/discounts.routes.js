@@ -13,19 +13,19 @@ const validate = require('../middleware/validate');
 
 // Section 2: Controller & Validator Imports
 const {
-  createDealValidator,
-} = require('../validators/deal.validator');
+  createDiscountValidator,
+} = require('../validators/discounts.validator');
 
 const {
-  createDeal,
-  getDeals,
-} = require('../controllers/deal.controller');
+  createDiscount,
+  getDiscounts,
+} = require('../controllers/discounts.controller');
 
 // Section 3: Route Definitions
-// GET / - List all deals (public)
-//   No middleware needed. Anyone can browse available deals.
-// POST / - Create a new deal (authenticated)
-//   Middleware chain: protect -> createDealValidator -> validate -> createDeal
+// GET / - List all discounts (public)
+//   No middleware needed. Anyone can browse available discounts.
+// POST / - Create a new discount (authenticated)
+//   Middleware chain: protect -> createDiscountValidator -> validate -> createDiscount
 //   Why: User must be logged in, input must be validated before creation.
 /**
  * @swagger
@@ -97,7 +97,7 @@ const {
  *       401:
  *         description: Unauthorized
  */
-router.get('/', getDeals);
+router.get('/', getDiscounts);
 
 /**
  * @swagger
@@ -175,16 +175,16 @@ router.get('/', getDeals);
  *       404:
  *         description: Deal not found
  */
-router.get('/:dealId', require('../controllers/deal.controller').getDeal);
-router.patch('/:dealId', protect, require('../controllers/deal.controller').updateDeal);
-router.delete('/:dealId', protect, require('../controllers/deal.controller').deleteDeal);
+router.get('/:dealId', require('../controllers/discounts.controller').getDiscount);
+router.patch('/:dealId', protect, require('../controllers/discounts.controller').updateDiscount);
+router.delete('/:dealId', protect, require('../controllers/discounts.controller').deleteDiscount);
 
 router.post(
   '/',
   protect,
-  createDealValidator,
+  createDiscountValidator,
   validate,
-  createDeal
+  createDiscount
 );
 
 module.exports = router;
