@@ -86,3 +86,38 @@ exports.getCurrentUser = async (req, res) => {
     });
   }
 };
+
+// Section 4: Update Current User's Profile
+// PATCH /api/v1/auth/me
+// Updates the authenticated user's own profile fields (e.g. full_name,
+// phone, avatar_url). This is separate from shop updates — the owner's
+// name (users.full_name) and the shop's name (shops.name) are different
+// fields and must be updated independently.
+
+exports.updateProfile = asyncHandler(async (req, res) => {
+  try {
+    const { data, error } = await auth.updateUserProfile(req.user.id, req.body);
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      data,
+    });
+  } catch (err) {
+    console.error('[updateProfile] Failed to update profile:', {
+      message: err.message,
+      code: err.code,
+      details: err.details,
+      hint: err.hint,
+    });
+    res.status(500).json({
+      success: false,
+      error: err.message,
+      code: err.code,
+      details: err.details,
+      hint: err.hint,
+    });
+  }
+});

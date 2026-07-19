@@ -139,6 +139,10 @@ exports.registerUser = async (userData) => {
   }
 
   // Auto-create a shop with the same ID as the user so the frontend can use userData.id as shopId.
+  // Note: shop name is deliberately a generic placeholder, NOT full_name —
+  // reusing the owner's personal name as the shop name was a bug (the shop
+  // name and owner name are different concepts and should never be tied
+  // together by default).
   const shopNow = new Date();
   const { error: shopError } = await supabase
     .from('shops')
@@ -146,7 +150,7 @@ exports.registerUser = async (userData) => {
       {
         id: userId,
         owner_id: userId,
-        name: full_name,
+        name: 'My Shop',
         email: email,
         phone: '0000000000',
         address: 'Not set',
