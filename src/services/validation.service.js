@@ -45,7 +45,7 @@ exports.isProductOwner = async (userId, productId) => {
  */
 exports.isDealActive = async (dealId) => {
   const { data, error } = await supabase
-    .from('deals')
+    .from('discounts')
     .select('is_active, start_date, end_date')
     .eq('id', dealId)
     .single();
@@ -100,7 +100,14 @@ exports.isValidShopCategory = (category) => {
  * @returns {boolean}
  */
 exports.isValidProductUnit = (unit) => {
-  const validUnits = ['kg', 'piece', 'litre', 'pack', 'dozen', 'metre'];
+  const validUnits = [
+    'pcs', 'piece', 'pair', 'set', 'pack', 'box', 'carton', 'bundle', 'dozen',
+    'roll', 'sheet', 'bottle', 'can', 'jar', 'tin', 'bag', 'sack', 'pouch',
+    'packet', 'tube', 'tablet', 'capsule', 'egg', 'tray', 'bunch', 'loaf',
+    'mg', 'g', 'kg', 't', 'mL', 'L', 'm³', 'mm', 'cm', 'm', 'km', 'in', 'ft', 'yd',
+    'cm²', 'm²', 'ft²', 'yd²', 'drum', 'barrel', 'coil', 'kit', 'litre', 'metre'
+  ];
+
   return validUnits.includes(unit);
 };
 

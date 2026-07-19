@@ -109,11 +109,16 @@ exports.registerUser = async (userData) => {
     };
   }
 
-  // Create user profile
-  return await supabase
+  // Create user profile - generate UUID first so we can reuse for shop
+  const { v4: uuidv4 } = require('uuid');
+  const userId = uuidv4();
+  const now = new Date();
+
+  const { data: user, error: userError } = await supabase
     .from('users')
     .insert([
       {
+        id: userId,
         firebase_uid,
         email,
         full_name,
@@ -122,10 +127,39 @@ exports.registerUser = async (userData) => {
         avatar_url,
         latitude,
         longitude,
+        created_at: now,
+        updated_at: now,
       },
     ])
     .select()
     .single();
+
+  if (userError) {
+    return { data: null, error: userError };
+  }
+
+  // Auto-create a shop with the same ID as the user so the frontend can use userData.id as shopId.
+  const shopNow = new Date();
+  const { error: shopError } = await supabase
+    .from('shops')
+    .insert([
+      {
+        id: userId,
+        owner_id: userId,
+        name: full_name,
+        email: email,
+        phone: '0000000000',
+        address: 'Not set',
+        created_at: shopNow,
+        updated_at: shopNow,
+      },
+    ]);
+
+  if (shopError) {
+    return { data: null, error: shopError };
+  }
+
+  return { data: user, error: null };
 };
 
 /**

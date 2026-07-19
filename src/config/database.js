@@ -1,6 +1,6 @@
 // Sequelize Database Configuration
-// Defines database connections for development, test, and production environments.
-// Uses the DATABASE_URL environment variable to connect to Supabase PostgreSQL, and configures SSL dialect options necessary for secure Supabase connections.
+// Connects to Supabase PostgreSQL via DATABASE_URL environment variable.
+// SSL is required for Supabase connections.
 
 require('dotenv').config();
 
@@ -9,22 +9,23 @@ const dbConfig = {
   dialectOptions: {
     ssl: {
       require: true,
-      rejectUnauthorized: false
-    }
-  }
+      rejectUnauthorized: false,
+    },
+  },
+  logging: false, // Suppress verbose SQL logs in console
 };
 
 module.exports = {
   development: {
     use_env_variable: 'DATABASE_URL',
-    ...dbConfig
+    ...dbConfig,
   },
   test: {
     use_env_variable: 'DATABASE_URL',
-    ...dbConfig
+    ...dbConfig,
   },
   production: {
     use_env_variable: 'DATABASE_URL',
-    ...dbConfig
-  }
+    ...dbConfig,
+  },
 };

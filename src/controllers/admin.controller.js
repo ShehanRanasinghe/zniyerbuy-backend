@@ -300,7 +300,7 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, shop_id, category, current_price, is_available, shops!shop_id(name)')
+      .select('id, name, shop_id, category, price, is_available, shops!shop_id(name)')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -310,7 +310,7 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
       name: product.name || `Product ${index + 1}`,
       shop: product.shops?.name || `Shop ${index + 1}`,
       category: product.category || 'General',
-      price: `LKR ${Number(product.current_price || 0).toLocaleString()}`,
+      price: `LKR ${Number(product.price || 0).toLocaleString()}`,
       status: !product.is_available ? 'Inactive' : 'Active',
       initials: product.name ? product.name.split(' ')[0].substring(0, 2).toUpperCase() : 'PR',
       color: '#1a1a1a',
@@ -417,7 +417,7 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
       recentlyViewedResult,
       userInterestsResult,
     ] = await Promise.all([
-      supabase.from('deals').select('*', { count: 'exact', head: true }).eq('is_active', true),
+      supabase.from('discounts').select('*', { count: 'exact', head: true }).eq('is_active', true),
       supabase.from('favorites').select('*', { count: 'exact', head: true }),
       supabase.from('reviews').select('*', { count: 'exact', head: true }),
       supabase.from('notifications').select('*', { count: 'exact', head: true }),
@@ -458,7 +458,7 @@ exports.getTrendData = async (req, res) => {
     const [usersData, productsData, dealsData, interactionsData] = await Promise.all([
       supabase.from('users').select('created_at').gte('created_at', sixMonthsAgo.toISOString()),
       supabase.from('products').select('created_at').gte('created_at', sixMonthsAgo.toISOString()),
-      supabase.from('deals').select('created_at, views_count').gte('created_at', sixMonthsAgo.toISOString()),
+      supabase.from('discounts').select('created_at, views_count').gte('created_at', sixMonthsAgo.toISOString()),
       supabase.from('user_interactions').select('created_at, action_type').gte('created_at', sixMonthsAgo.toISOString()),
     ]);
     const months = [];
@@ -492,7 +492,7 @@ exports.getTrendData = async (req, res) => {
 exports.getAllDeals = async (req, res) => {
   try {
     const { data, error } = await supabase
-      .from('deals')
+      .from('discounts')
       .select('id, title, shop_id, product_id, discount_type, discount_value, deal_price, original_price, is_active, start_date, end_date, views_count, created_at, shops!shop_id(name)')
       .order('created_at', { ascending: false });
     if (error) throw error;
@@ -518,7 +518,7 @@ exports.toggleDeal = async (req, res) => {
   try {
     const { id } = req.params;
     const { is_active } = req.body;
-    const { data, error } = await supabase.from('deals').update({ is_active }).eq('id', id).select().single();
+    const { data, error } = await supabase.from('discounts').update({ is_active }).eq('id', id).select().single();
     if (error) throw error;
     res.status(200).json({ success: true, message: 'Deal updated', data });
   } catch (err) { res.status(500).json({ success: false, error: err.message }); }
@@ -528,7 +528,7 @@ exports.toggleDeal = async (req, res) => {
 exports.deleteDeal = async (req, res) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase.from('deals').delete().eq('id', id).select().single();
+    const { data, error } = await supabase.from('discounts').delete().eq('id', id).select().single();
     if (error) throw error;
     res.status(200).json({ success: true, message: 'Deal deleted', data });
   } catch (err) { res.status(500).json({ success: false, error: err.message }); }

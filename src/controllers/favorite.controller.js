@@ -69,7 +69,7 @@ exports.getFavorites = async (req, res) => {
         products (
           id,
           name,
-          current_price,
+          price,
           image_url
         )
       `)
