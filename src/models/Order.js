@@ -37,6 +37,34 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       defaultValue: 1,
     },
+    customer_phone: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    delivery_address: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    // 'cod' | 'paid' | 'pickup'
+    payment_method: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'cod',
+    },
+    // Editable per-order; deliberately no fixed platform default
+    delivery_fee: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
+    subtotal: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
+    invoice_sent: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   }, {
     tableName: 'orders',
     underscored: true,
