@@ -97,3 +97,77 @@ exports.getShopReviews = async (req, res) => {
     });
   }
 };
+
+// Section 4: Get Product Reviews
+// GET /api/v1/reviews/product/:productId
+// Retrieves reviews left for a specific product.
+exports.getProductReviews = asyncHandler(async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    const { data, error } = await supabase
+      .from('reviews')
+      .select(`
+        *,
+        users (
+          id,
+          full_name
+        )
+      `)
+      .eq('product_id', productId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      count: data ? data.length : 0,
+      data: data || [],
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
+// Section 5: Reply to Review
+// POST /api/v1/reviews/:reviewId/reply
+// Adds a seller reply to a review.
+exports.replyToReview = asyncHandler(async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const { reply } = req.body;
+
+    if (!reply) {
+      return res.status(400).json({
+        success: false,
+        error: 'Reply content is required',
+      });
+    }
+
+    const { data, error } = await supabase
+      .from('reviews')
+      .update({
+        shop_reply: reply,
+        shop_reply_at: new Date().toISOString(),
+      })
+      .eq('id', reviewId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: 'Reply added successfully',
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});

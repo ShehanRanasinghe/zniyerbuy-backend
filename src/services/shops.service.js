@@ -76,11 +76,11 @@ exports.getShopById = async (shopId, includeProducts = false, includeDeals = fal
       products (
         id,
         name,
-        current_price,
+        price,
         image_url,
         is_available
       ),
-      deals (
+      discounts (
         id,
         title,
         discount_type,
@@ -95,7 +95,7 @@ exports.getShopById = async (shopId, includeProducts = false, includeDeals = fal
       products (
         id,
         name,
-        current_price,
+        price,
         image_url,
         is_available
       )
@@ -103,7 +103,7 @@ exports.getShopById = async (shopId, includeProducts = false, includeDeals = fal
   } else if (includeDeals) {
     selectQuery = `
       *,
-      deals (
+      discounts (
         id,
         title,
         discount_type,
@@ -119,6 +119,15 @@ exports.getShopById = async (shopId, includeProducts = false, includeDeals = fal
     .select(selectQuery)
     .eq('id', shopId)
     .single();
+};
+
+/**
+ * Get shop by ID including products and deals (convenience alias)
+ * @param {string} shopId - Shop UUID
+ * @returns {Promise<{data, error}>}
+ */
+exports.getShopWithDetails = async (shopId) => {
+  return await exports.getShopById(shopId, true, true);
 };
 
 /**
@@ -381,7 +390,7 @@ exports.getShopStats = async (shopId) => {
       .select('*', { count: 'exact', head: true })
       .eq('shop_id', shopId),
     supabase
-      .from('deals')
+      .from('discounts')
       .select('*', { count: 'exact', head: true })
       .eq('shop_id', shopId),
     supabase

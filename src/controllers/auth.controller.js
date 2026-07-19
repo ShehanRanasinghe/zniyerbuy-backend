@@ -40,14 +40,18 @@ exports.registerUser = asyncHandler(async (req, res) => {
     });
 
     if (error) {
+      const errorMessage = typeof error === 'string'
+        ? error
+        : error?.message || JSON.stringify(error);
+
       // Check if error is due to existing user
-      if (error.includes('already exists') || error.includes('duplicate')) {
+      if (errorMessage.includes('already exists') || errorMessage.includes('duplicate')) {
         return res.status(400).json({
           success: false,
           error: 'User already exists',
         });
       }
-      throw new Error(error);
+      throw new Error(errorMessage);
     }
 
     res.status(201).json({

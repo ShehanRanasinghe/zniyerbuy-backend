@@ -16,44 +16,76 @@ const { body } = require('express-validator');
 //   - end_date: must be ISO 8601 format
 // Why isUUID for shop_id: Supabase uses UUID primary keys. 
 // Validating the format prevents invalid foreign key errors at the database level.
-exports.createDealValidator = [
+exports.createDiscountValidator = [
   body('shop_id')
+    .optional({ nullable: true })
     .isUUID()
-    .withMessage('Valid shop ID is required'),
+    .withMessage('Valid shop ID is required when provided'),
 
   body('product_id')
-    .optional()
+    .optional({ nullable: true })
     .isUUID()
     .withMessage('Valid product ID is required'),
 
   body('title')
+    .optional({ nullable: true })
     .notEmpty()
     .withMessage('Deal title is required'),
 
+  body('description')
+    .optional({ nullable: true })
+    .isString()
+    .withMessage('Description must be a string'),
+
+  body('occasion_type')
+    .optional({ nullable: true })
+    .isString()
+    .withMessage('Occasion type must be a string'),
+
   body('discount_type')
     .optional()
-    .isIn(['percentage', 'fixed_amount'])
-    .withMessage('Discount type must be percentage or fixed_amount'),
+    .isIn(['percentage', 'fixed', 'fixed_amount'])
+    .withMessage('Discount type must be percentage, fixed, or fixed_amount'),
 
   body('discount_value')
+    .optional({ nullable: true })
     .isFloat({ min: 0 })
     .withMessage('Valid discount value is required'),
 
+  body('discount_percentage')
+    .optional({ nullable: true })
+    .isFloat({ min: 0, max: 100 })
+    .withMessage('Discount percentage must be between 0 and 100'),
+
   body('original_price')
-    .optional()
+    .optional({ nullable: true })
     .isFloat({ min: 0 })
     .withMessage('Valid original price is required'),
 
+  body('price')
+    .optional({ nullable: true })
+    .isFloat({ min: 0 })
+    .withMessage('Valid price is required'),
+
   body('deal_price')
-    .optional()
+    .optional({ nullable: true })
     .isFloat({ min: 0 })
     .withMessage('Valid deal price is required'),
 
+  body('discounted_price')
+    .optional({ nullable: true })
+    .isFloat({ min: 0 })
+    .withMessage('Valid discounted price is required'),
+
   body('start_date')
+    .optional({ nullable: true })
     .isISO8601()
     .withMessage('Valid start date required'),
 
   body('end_date')
+    .optional({ nullable: true })
     .isISO8601()
     .withMessage('Valid end date required'),
 ];
+
+exports.createDealValidator = exports.createDiscountValidator;

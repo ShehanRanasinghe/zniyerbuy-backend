@@ -39,6 +39,12 @@ exports.createProductValidator = [
 
   body('unit')
     .optional()
-    .isIn(['kg', 'piece', 'litre', 'pack', 'dozen', 'metre'])
+    .isIn([
+      'pcs', 'piece', 'pair', 'set', 'pack', 'box', 'carton', 'bundle', 'dozen',
+      'roll', 'sheet', 'bottle', 'can', 'jar', 'tin', 'bag', 'sack', 'pouch',
+      'packet', 'tube', 'tablet', 'capsule', 'egg', 'tray', 'bunch', 'loaf',
+      'mg', 'g', 'kg', 't', 'mL', 'L', 'm³', 'mm', 'cm', 'm', 'km', 'in', 'ft', 'yd',
+      'cm²', 'm²', 'ft²', 'yd²', 'drum', 'barrel', 'coil', 'kit', 'litre', 'metre'
+    ])
     .withMessage('Invalid unit type'),
 ];

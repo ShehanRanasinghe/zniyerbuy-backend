@@ -11,8 +11,7 @@ const supabase = require('../config/supabase');
  * @param {string} productData.shop_id - Shop UUID
  * @param {string} productData.name - Product name
  * @param {string} productData.description - Product description
- * @param {number} productData.original_price - Original price
- * @param {number} [productData.current_price] - Current price (defaults to original_price)
+ * @param {number} productData.price - Product price
  * @param {string} [productData.unit='piece'] - Unit type
  * @param {number} [productData.stock_quantity=0] - Stock quantity
  * @param {string} [productData.image_url] - Product image URL
@@ -24,13 +23,14 @@ exports.createProduct = async (productData) => {
     shop_id,
     name,
     description,
-    original_price,
-    current_price,
+    price,
     unit = 'piece',
     stock_quantity = 0,
     image_url,
     category,
   } = productData;
+
+  const now = new Date();
 
   return await supabase
     .from('products')
@@ -39,12 +39,13 @@ exports.createProduct = async (productData) => {
         shop_id,
         name,
         description,
-        original_price,
-        current_price: current_price || original_price,
+        price,
         unit,
         stock_quantity,
         image_url,
         category,
+        created_at: now,
+        updated_at: now,
       },
     ])
     .select()
@@ -157,10 +158,10 @@ exports.getAllProducts = async (options = {}) => {
   let ascending = false;
 
   if (sort === 'price_asc') {
-    orderField = 'current_price';
+    orderField = 'price';
     ascending = true;
   } else if (sort === 'price_desc') {
-    orderField = 'current_price';
+    orderField = 'price';
     ascending = false;
   }
 
@@ -175,6 +176,15 @@ exports.getAllProducts = async (options = {}) => {
     limit,
     count: data?.length || 0,
   };
+};
+
+/**
+ * Get products with pagination and filters (alias for getAllProducts)
+ * @param {object} options - Query options (same as getAllProducts)
+ * @returns {Promise<{data, error, page, limit, count}>}
+ */
+exports.getProducts = async (options = {}) => {
+  return await exports.getAllProducts(options);
 };
 
 /**

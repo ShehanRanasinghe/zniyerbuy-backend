@@ -29,6 +29,7 @@ const {
   getProducts,
   searchProducts,
   getProductById,
+  updateProduct,
   updateProductImage,
   getTrendingProducts,
   getRecentlyViewedProducts,
@@ -313,6 +314,14 @@ router.get('/:id/similar',getSimilarProducts);
  *         description: Product not found
  */
 router.get('/:id', getProductById);
+
+router.patch(
+  '/:id',
+  protect,
+  authorize('shop_owner', 'admin'),
+  checkProductOwnership,
+  updateProduct
+);
 
 /**
  * @swagger
