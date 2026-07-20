@@ -10,10 +10,12 @@ const router = express.Router();
 
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
+const checkDiscountOwnership = require('../middleware/checkDiscountOwnership');
 
 // Section 2: Controller & Validator Imports
 const {
   createDiscountValidator,
+  updateDiscountValidator,
 } = require('../validators/discounts.validator');
 
 const {
@@ -176,8 +178,8 @@ router.get('/', getDiscounts);
  *         description: Deal not found
  */
 router.get('/:dealId', require('../controllers/discounts.controller').getDiscount);
-router.patch('/:dealId', protect, require('../controllers/discounts.controller').updateDiscount);
-router.delete('/:dealId', protect, require('../controllers/discounts.controller').deleteDiscount);
+router.patch('/:dealId', protect, checkDiscountOwnership, updateDiscountValidator, validate, require('../controllers/discounts.controller').updateDiscount);
+router.delete('/:dealId', protect, checkDiscountOwnership, require('../controllers/discounts.controller').deleteDiscount);
 
 router.post(
   '/',

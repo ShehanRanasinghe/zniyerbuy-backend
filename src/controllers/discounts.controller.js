@@ -18,7 +18,7 @@ const asyncHandler = require('../utils/asyncHandler');
 //   3. Return the created deal data
 // Why shop_id is required: Each deal belongs to a shop, linking the promotion to the business that created it.
 
-const buildDiscountPayload = async (reqBody, userId = null) => {
+const buildDiscountPayload = async (reqBody, userId = null, userRole = null) => {
   const {
     shop_id,
     product_id,
@@ -76,6 +76,35 @@ const buildDiscountPayload = async (reqBody, userId = null) => {
     throw new Error('Unable to resolve shop_id from selected product or authenticated user');
   }
 
+  // Ownership check: a shop owner may only create promotions/deals for
+  // their own shop. Without this, any authenticated shop owner could
+  // submit any shop_id and create discounts on other shops' behalf.
+  if (userRole !== 'admin') {
+    const { data: shopData, error: shopError } = await supabase
+      .from('shops')
+      .select('owner_id')
+      .eq('id', resolvedShopId)
+      .single();
+
+    if (shopError || !shopData || shopData.owner_id !== userId) {
+      throw new Error('Unauthorized: you can only create promotions or deals for your own shop');
+    }
+  }
+
+  // Product-belongs-to-shop check: prevents attaching a promotion/deal to
+  // a product that belongs to a different shop than the one being charged.
+  if (product_id) {
+    const { data: productData, error: productError } = await supabase
+      .from('products')
+      .select('shop_id')
+      .eq('id', product_id)
+      .single();
+
+    if (productError || !productData || productData.shop_id !== resolvedShopId) {
+      throw new Error('Unauthorized: the selected product does not belong to this shop');
+    }
+  }
+
   const now = new Date();
 
   return {
@@ -102,7 +131,7 @@ const buildDiscountPayload = async (reqBody, userId = null) => {
 
 exports.createDiscount = asyncHandler(async (req, res) => {
   try {
-    const payload = await buildDiscountPayload(req.body, req.user?.id);
+    const payload = await buildDiscountPayload(req.body, req.user?.id, req.user?.role);
 
     const { data, error } = await supabase
       .from('discounts')
@@ -129,7 +158,10 @@ exports.createDiscount = asyncHandler(async (req, res) => {
       hint: err.hint,
     });
 
-    const statusCode = err.message?.includes('Unable to resolve shop_id') ? 400 : 500;
+    let statusCode = 500;
+    if (err.message?.includes('Unable to resolve shop_id')) statusCode = 400;
+    if (err.message?.includes('Unauthorized')) statusCode = 403;
+
     res.status(statusCode).json({
       success: false,
       error: err.message,
@@ -150,7 +182,7 @@ exports.createDeal = exports.createDiscount;
 
 exports.getDiscounts = async (req, res) => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('discounts')
       .select(`
         *,
@@ -158,8 +190,13 @@ exports.getDiscounts = async (req, res) => {
           id,
           name
         )
-      `)
-      .order('created_at', { ascending: false });
+      `);
+
+    if (req.query.shop_id) {
+      query = query.eq('shop_id', req.query.shop_id);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) throw error;
 
@@ -215,7 +252,33 @@ exports.getDiscount = asyncHandler(async (req, res) => {
 exports.updateDiscount = asyncHandler(async (req, res) => {
   try {
     const discountId = req.params.discountId || req.params.dealId || req.params.id;
-    const updateFields = { ...req.body, updated_at: new Date() };
+
+    // shop_id is intentionally never updatable here — reassigning a
+    // discount to a different shop would bypass the ownership check that
+    // already ran against its original shop_id.
+    const { shop_id: _ignoredShopId, ...bodyWithoutShopId } = req.body;
+    const updateFields = { ...bodyWithoutShopId, updated_at: new Date() };
+
+    if (updateFields.product_id) {
+      const { data: existingDiscount } = await supabase
+        .from('discounts')
+        .select('shop_id')
+        .eq('id', discountId)
+        .single();
+
+      const { data: productData, error: productError } = await supabase
+        .from('products')
+        .select('shop_id')
+        .eq('id', updateFields.product_id)
+        .single();
+
+      if (productError || !productData || productData.shop_id !== existingDiscount?.shop_id) {
+        return res.status(403).json({
+          success: false,
+          error: 'Unauthorized: the selected product does not belong to this shop',
+        });
+      }
+    }
 
     const { data, error } = await supabase
       .from('discounts')

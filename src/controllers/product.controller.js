@@ -99,6 +99,7 @@ exports.getProducts = asyncHandler(async (req, res) => {
   const category = req.query.category;
   const sort = req.query.sort || 'newest';
   const keyword = req.query.keyword;
+  const shop_id = req.query.shop_id;
 
   try {
     // Use products service to get products with filters
@@ -108,6 +109,7 @@ exports.getProducts = asyncHandler(async (req, res) => {
       category,
       sort,
       keyword,
+      shop_id,
     });
 
     if (error) throw error;
