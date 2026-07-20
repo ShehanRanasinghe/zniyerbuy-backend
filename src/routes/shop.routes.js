@@ -18,6 +18,7 @@ const checkShopOwnership = require('../middleware/checkShopOwnership');
 // Section 2: Validator Imports
 const {
   createShopValidator,
+  updateShopValidator,
 } = require('../validators/shop.validator');
 
 const {
@@ -30,6 +31,7 @@ const {
   getNearbyShops,
   getShopById,
   updateShopImage,
+  updateShop,
 } = require('../controllers/shop.controller');
 
 // Section 4: Public Routes
@@ -144,6 +146,41 @@ router.patch(
  *         description: Shop not found
  */
 router.get('/:id', getShopById);
+
+/**
+ * @swagger
+ * /shops/{id}:
+ *   patch:
+ *     summary: Update general shop fields (name, phone, opening_hours, logo_url, status, etc)
+ *     tags: [Shops]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Shop ID
+ *     responses:
+ *       200:
+ *         description: Shop updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Not shop owner
+ *       404:
+ *         description: Shop not found
+ */
+router.patch(
+  '/:id',
+  protect,
+  authorize('shop_owner', 'admin'),
+  checkShopOwnership,
+  updateShopValidator,
+  validate,
+  updateShop
+);
 
 /**
  * @swagger

@@ -91,3 +91,64 @@ exports.getOrder = asyncHandler(async (req, res) => {
     });
   }
 });
+
+// PATCH /api/v1/orders/:id
+// Updates an order's status, delivery fee, payment method, and/or invoice_sent flag.
+// Ownership is verified by the checkOrderOwnership middleware before this runs.
+exports.updateOrder = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, delivery_fee, payment_method, invoice_sent } = req.body;
+
+    const updateFields = { updated_at: new Date() };
+    if (status !== undefined) updateFields.status = status;
+    if (payment_method !== undefined) updateFields.payment_method = payment_method;
+    if (invoice_sent !== undefined) updateFields.invoice_sent = invoice_sent;
+
+    if (delivery_fee !== undefined) {
+      updateFields.delivery_fee = delivery_fee;
+
+      // Recalculate total_amount from subtotal + new delivery fee whenever
+      // we know the subtotal, so the two stay consistent instead of
+      // drifting apart.
+      const { data: existingOrder, error: fetchError } = await supabase
+        .from('orders')
+        .select('subtotal')
+        .eq('id', id)
+        .single();
+
+      if (!fetchError && existingOrder?.subtotal != null) {
+        updateFields.total_amount = Number(existingOrder.subtotal) + Number(delivery_fee);
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('orders')
+      .update(updateFields)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: 'Order updated successfully',
+      data,
+    });
+  } catch (err) {
+    console.error('[updateOrder] Failed to update order:', {
+      message: err.message,
+      code: err.code,
+      details: err.details,
+      hint: err.hint,
+    });
+    res.status(500).json({
+      success: false,
+      error: err.message,
+      code: err.code,
+      details: err.details,
+      hint: err.hint,
+    });
+  }
+});

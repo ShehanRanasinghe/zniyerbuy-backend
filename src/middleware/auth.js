@@ -42,11 +42,16 @@ exports.protect = async (req, res, next) => {
     }
 
     // Attach user info to the request for downstream route handlers.
+    // full_name and avatar_url are included since authenticateUser already
+    // fetches them — dropping them here meant GET /auth/me (and therefore
+    // the profile page) could never reflect the owner's actual name.
     req.user = {
       id: user.id,
       firebase_uid: user.firebase_uid,
       email: user.email,
+      full_name: user.full_name,
       role: user.role,
+      avatar_url: user.avatar_url,
     };
 
     next();

@@ -176,3 +176,41 @@ exports.updateShopImage = asyncHandler(async (req, res) => {
     });
   }
 });
+
+// Section 6: Update Shop
+// PATCH /api/v1/shops/:id
+// Updates general shop fields (name, phone, opening_hours, logo_url,
+// status, etc). Protected by auth, role authorization, and ownership
+// check. Only fields present in the request body are updated (partial
+// update) — shops.updateShop() already strips id/owner_id/created_at
+// from whatever is passed in.
+
+exports.updateShop = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data, error } = await shops.updateShop(id, req.body);
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: 'Shop updated successfully',
+      data,
+    });
+  } catch (err) {
+    console.error('[updateShop] Failed to update shop:', {
+      message: err.message,
+      code: err.code,
+      details: err.details,
+      hint: err.hint,
+    });
+    res.status(500).json({
+      success: false,
+      error: err.message,
+      code: err.code,
+      details: err.details,
+      hint: err.hint,
+    });
+  }
+});
