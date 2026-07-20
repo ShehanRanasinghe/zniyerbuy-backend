@@ -14,10 +14,12 @@ const validate = require('../middleware/validate');
 const {
   registerUser,
   getCurrentUser,
+  updateProfile,
 } = require('../controllers/auth.controller');
 
 const {
   registerValidator,
+  updateProfileValidator,
 } = require('../validators/auth.validator');
 
 // Section 3: Route Definitions
@@ -76,5 +78,21 @@ router.post('/register', registerValidator, validate, registerUser);
  *         description: Unauthorized
  */
 router.get('/me', protect, getCurrentUser);
+
+/**
+ * @swagger
+ * /auth/me:
+ *   patch:
+ *     summary: Update the current authenticated user's profile
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.patch('/me', protect, updateProfileValidator, validate, updateProfile);
 
 module.exports = router;

@@ -24,14 +24,9 @@ exports.createProductValidator = [
     .notEmpty()
     .withMessage('Product name is required'),
 
-  body('original_price')
+  body('price')
     .isFloat({ min: 0 })
-    .withMessage('Valid original price is required'),
-
-  body('current_price')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Valid current price is required'),
+    .withMessage('Valid price is required'),
 
   body('stock_quantity')
     .isInt({ min: 0 })

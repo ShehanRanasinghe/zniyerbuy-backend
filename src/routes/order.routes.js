@@ -4,7 +4,10 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
-const { getOrders, getOrder } = require('../controllers/order.controller');
+const validate = require('../middleware/validate');
+const checkOrderOwnership = require('../middleware/checkOrderOwnership');
+const { updateOrderValidator } = require('../validators/order.validator');
+const { getOrders, getOrder, updateOrder } = require('../controllers/order.controller');
 
 /**
  * @swagger
@@ -45,6 +48,33 @@ router.get('/', protect, getOrders);
  *       404:
  *         description: Order not found
  */
-router.get('/:id', protect, getOrder);
+router.get('/:id', protect, checkOrderOwnership, getOrder);
+
+/**
+ * @swagger
+ * /orders/{id}:
+ *   patch:
+ *     summary: Update an order's status, delivery fee, payment method, or invoice_sent flag
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order ID
+ *     responses:
+ *       200:
+ *         description: Order updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Not the order's shop owner
+ *       404:
+ *         description: Order not found
+ */
+router.patch('/:id', protect, checkOrderOwnership, updateOrderValidator, validate, updateOrder);
 
 module.exports = router;

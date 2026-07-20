@@ -80,12 +80,56 @@ exports.createDiscountValidator = [
   body('start_date')
     .optional({ nullable: true })
     .isISO8601()
-    .withMessage('Valid start date required'),
+    .withMessage('Valid start date required')
+    .custom((value) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (new Date(value) < today) {
+        throw new Error('Start date cannot be in the past');
+      }
+      return true;
+    }),
 
   body('end_date')
     .optional({ nullable: true })
     .isISO8601()
-    .withMessage('Valid end date required'),
+    .withMessage('Valid end date required')
+    .custom((value, { req }) => {
+      if (req.body.start_date && new Date(value) < new Date(req.body.start_date)) {
+        throw new Error('End date cannot be before the start date');
+      }
+      return true;
+    }),
 ];
 
 exports.createDealValidator = exports.createDiscountValidator;
+
+// Section 3: Update Deal Validator
+// Used on: PATCH /api/v1/deals/:dealId
+// Same date rules as creation, applied only when the field is present in
+// the update payload.
+exports.updateDiscountValidator = [
+  body('start_date')
+    .optional({ nullable: true })
+    .isISO8601()
+    .withMessage('Valid start date required')
+    .custom((value) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (new Date(value) < today) {
+        throw new Error('Start date cannot be in the past');
+      }
+      return true;
+    }),
+
+  body('end_date')
+    .optional({ nullable: true })
+    .isISO8601()
+    .withMessage('Valid end date required')
+    .custom((value, { req }) => {
+      if (req.body.start_date && new Date(value) < new Date(req.body.start_date)) {
+        throw new Error('End date cannot be before the start date');
+      }
+      return true;
+    }),
+];

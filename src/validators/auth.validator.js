@@ -34,3 +34,24 @@ exports.registerValidator = [
     .isIn(['consumer', 'shop_owner', 'admin'])
     .withMessage('Invalid role'),
 ];
+
+// Section 3: Update Profile Validator
+// Used on: PATCH /api/v1/auth/me
+// Validates the fields a user can update about their own profile.
+// All optional since this is a partial update.
+exports.updateProfileValidator = [
+  body('full_name')
+    .optional()
+    .notEmpty()
+    .withMessage('Full name cannot be empty'),
+
+  body('phone')
+    .optional({ nullable: true })
+    .isString()
+    .withMessage('Phone must be a string'),
+
+  body('avatar_url')
+    .optional({ nullable: true })
+    .isString()
+    .withMessage('Avatar URL must be a string'),
+];

@@ -126,6 +126,7 @@ exports.getAllProducts = async (options = {}) => {
     keyword,
     sort = 'newest',
     availableOnly = false,
+    shop_id,
   } = options;
 
   const from = (page - 1) * limit;
@@ -140,6 +141,10 @@ exports.getAllProducts = async (options = {}) => {
         name
       )
     `);
+
+  if (shop_id) {
+    query = query.eq('shop_id', shop_id);
+  }
 
   if (category) {
     query = query.eq('category', category);

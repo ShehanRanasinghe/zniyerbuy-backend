@@ -47,3 +47,64 @@ exports.createShopValidator = [
     .notEmpty()
     .withMessage('Phone number is required'),
 ];
+
+// Section 3: Update Shop Validator
+// Used on: PATCH /api/v1/shops/:id
+// All fields optional since this is a partial update — only validates
+// fields that are actually present in the request body.
+exports.updateShopValidator = [
+  body('name')
+    .optional()
+    .notEmpty()
+    .withMessage('Shop name cannot be empty'),
+
+  body('category')
+    .optional()
+    .isIn(['grocery', 'electronics', 'clothing', 'food', 'pharmacy', 'beauty', 'sports', 'other'])
+    .withMessage('Invalid shop category'),
+
+  body('address')
+    .optional()
+    .notEmpty()
+    .withMessage('Address cannot be empty'),
+
+  body('city')
+    .optional()
+    .notEmpty()
+    .withMessage('City cannot be empty'),
+
+  body('latitude')
+    .optional()
+    .isFloat()
+    .withMessage('Valid latitude is required'),
+
+  body('longitude')
+    .optional()
+    .isFloat()
+    .withMessage('Valid longitude is required'),
+
+  body('phone')
+    .optional()
+    .notEmpty()
+    .withMessage('Phone number cannot be empty'),
+
+  body('email')
+    .optional({ nullable: true })
+    .isEmail()
+    .withMessage('Valid email is required'),
+
+  body('opening_hours')
+    .optional({ nullable: true })
+    .isString()
+    .withMessage('Opening hours must be a string'),
+
+  body('logo_url')
+    .optional({ nullable: true })
+    .isString()
+    .withMessage('Logo URL must be a string'),
+
+  body('status')
+    .optional()
+    .isIn(['active', 'inactive', 'suspended'])
+    .withMessage('Status must be active, inactive, or suspended'),
+];
