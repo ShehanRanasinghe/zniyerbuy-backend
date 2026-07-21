@@ -30,6 +30,7 @@ const {
   searchProducts,
   getProductById,
   updateProduct,
+  deleteProduct,
   updateProductImage,
   getTrendingProducts,
   getRecentlyViewedProducts,
@@ -321,6 +322,39 @@ router.patch(
   authorize('shop_owner', 'admin'),
   checkProductOwnership,
   updateProduct
+);
+
+/**
+ * @swagger
+ * /products/{id}:
+ *   delete:
+ *     summary: Delete a product
+ *     tags: [Products - Management]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Product ID
+ *     responses:
+ *       200:
+ *         description: Product deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Not product owner
+ *       404:
+ *         description: Product not found
+ */
+router.delete(
+  '/:id',
+  protect,
+  authorize('shop_owner', 'admin'),
+  checkProductOwnership,
+  deleteProduct
 );
 
 /**
