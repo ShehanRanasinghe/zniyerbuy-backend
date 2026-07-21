@@ -81,6 +81,29 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   }
 });
 
+// Delete Product
+// DELETE /api/v1/products/:id
+// Ownership is verified by the checkProductOwnership middleware before this runs.
+exports.deleteProduct = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data, error } = await products.deleteProduct(id);
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: 'Product deleted successfully',
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
 // Section 4: Get Products (Paginated & Filterable)
 // GET /api/v1/products?page=1&limit=10&category=...&sort=...&keyword=...
 // Retrieves a paginated list of products with optional filtering by category, keyword search, and sorting.
