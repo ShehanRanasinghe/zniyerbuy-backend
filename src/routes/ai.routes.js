@@ -17,6 +17,7 @@ const {
   getProductRecommendations,
   getTrendingProducts,
   predictDemand,
+  getShopPredictions,
   checkAIHealth,
 } = require('../controllers/ai.controller');
 
@@ -119,6 +120,40 @@ router.post(
   protect,
   authorize('shop_owner', 'admin'),
   predictDemand
+);
+
+// Section 6b: Shop Predictions Route (Seller Analytics Dashboard)
+// GET /predictions/shop/:shopId - Live next-month predictions for one shop
+/**
+ * @swagger
+ * /ai/predictions/shop/{shopId}:
+ *   get:
+ *     summary: Get AI-powered next-month predictions for a shop
+ *     tags: [AI]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: shopId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Predicted revenue, daily revenue, expected users, top category, daily revenue forecast, and category sales prediction
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - not the shop owner or an admin
+ *       404:
+ *         description: Shop not found
+ */
+router.get(
+  '/predictions/shop/:shopId',
+  protect,
+  authorize('shop_owner', 'admin'),
+  getShopPredictions
 );
 
 // Section 7: Health Check Route
