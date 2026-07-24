@@ -4,6 +4,7 @@
 // Why: Reduces code duplication across controllers and provides reusable shop operations.
 
 const supabase = require('../config/supabase');
+const haversineDistanceKm = require('../utils/haversineDistanceKm');
 
 /**
  * Create a new shop
@@ -157,12 +158,17 @@ exports.getShopsByOwner = async (ownerId) => {
 exports.getNearbyShops = async (latitude, longitude, radius = 10, options = {}) => {
   const { category, verifiedOnly = false, activeOnly = true } = options;
 
-  // Build Haversine distance calculation query
-  const distanceQuery = `(6371 * acos(cos(radians(${latitude})) * cos(radians(latitude)) * cos(radians(longitude) - radians(${longitude})) + sin(radians(${latitude})) * sin(radians(latitude)))) AS distance`;
-
+  // NOTE: This used to append a raw SQL math expression
+  // ('(6371 * acos(...)) AS distance') directly into the Supabase
+  // .select() string. PostgREST's select parameter only understands
+  // column names, embedded resources, and pre-registered SQL "computed
+  // column" functions — not arbitrary inline arithmetic with AS — so that
+  // was an invalid query and every call to GET /shops/nearby failed with
+  // a parse error. Distance is now computed in plain JS after fetching,
+  // using the same haversine helper as products/nearby.
   let query = supabase
     .from('shops')
-    .select(`*, ${distanceQuery}`)
+    .select('*')
     .gte('latitude', latitude - 1)
     .lte('latitude', latitude + 1)
     .gte('longitude', longitude - 1)
@@ -184,10 +190,16 @@ exports.getNearbyShops = async (latitude, longitude, radius = 10, options = {}) 
 
   if (error) return { data: null, error };
 
-  // Filter by exact radius (Haversine calculation)
-  const filteredData = data.filter((shop) => shop.distance <= radius);
+  const withDistance = (data || [])
+    .map((shop) => ({
+      ...shop,
+      distance: haversineDistanceKm(latitude, longitude, shop.latitude, shop.longitude),
+    }))
+    .filter((shop) => shop.distance != null && shop.distance <= radius)
+    .sort((a, b) => a.distance - b.distance)
+    .map((shop) => ({ ...shop, distance: Number(shop.distance.toFixed(2)) }));
 
-  return { data: filteredData, error: null };
+  return { data: withDistance, error: null };
 };
 
 /**
