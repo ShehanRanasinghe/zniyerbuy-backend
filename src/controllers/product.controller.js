@@ -7,6 +7,8 @@
 // Section 1: Dependencies
 const { products, recommendation } = require('../services');
 const asyncHandler = require('../utils/asyncHandler');
+const supabase = require('../config/supabase');
+const haversineDistanceKm = require('../utils/haversineDistanceKm');
 
 // Section 2: Create Product
 // POST /api/v1/products
@@ -439,9 +441,22 @@ exports.getRecentlyTrendingProducts = asyncHandler(async (req, res) => {
 // FIX APPLIED: Previously referenced undefined variable 'keyword' instead of the query parameter 'q'. Fixed to use 'q' consistently.
 // Also fixed column name from 'name' to 'product_name' to match the actual database schema.
 
+// Section 11: Search Products
+// GET /api/v1/products/search?q=...&latitude=...&longitude=...&category=...
+// Searches products by name (case-insensitive partial match) and, when the
+// customer's location is supplied, orders results nearest-shop-first, then
+// lowest-price-first — matching the home page search requirement (e.g.
+// searching "coffee beans" should surface the nearest shop with the
+// cheapest coffee beans at the top). Falls back to newest-first when no
+// location is supplied.
+// Also logs the search term to search_history for authenticated users, and
+// annotates every result with shop_name, distance_km, and in_stock so the
+// mobile search results list doesn't need a second request per item.
 exports.searchProducts = async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, category } = req.query;
+    const latitude = req.query.latitude != null ? parseFloat(req.query.latitude) : null;
+    const longitude = req.query.longitude != null ? parseFloat(req.query.longitude) : null;
 
     if (req.user && q?.trim()) {
       await supabase
@@ -452,25 +467,65 @@ exports.searchProducts = async (req, res) => {
         });
     }
 
-    // Search for products by name using case-insensitive match
-    const { data, error } = await supabase
+    let query = supabase
       .from('products')
       .select(`
         *,
         shops (
           id,
-          name
+          name,
+          latitude,
+          longitude,
+          address
         )
       `)
-      .ilike('name', `%${q}%`)
-      .order('created_at', { ascending: false });
+      .ilike('name', `%${q || ''}%`);
+
+    if (category) {
+      query = query.eq('category', category);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 
+    const annotated = (data || []).map((product) => {
+      const distanceKm = haversineDistanceKm(
+        latitude,
+        longitude,
+        product.shops?.latitude,
+        product.shops?.longitude
+      );
+
+      return {
+        ...product,
+        shop_name: product.shops?.name || null,
+        distance_km: distanceKm != null ? Number(distanceKm.toFixed(2)) : null,
+        in_stock: !!product.is_available && (product.stock_quantity == null || product.stock_quantity > 0),
+      };
+    });
+
+    if (latitude != null && longitude != null) {
+      // Nearest first; products whose shop has no location fall to the
+      // end. Within the same distance (or when neither has one), cheapest
+      // first.
+      annotated.sort((a, b) => {
+        if (a.distance_km == null && b.distance_km == null) {
+          return Number(a.price) - Number(b.price);
+        }
+        if (a.distance_km == null) return 1;
+        if (b.distance_km == null) return -1;
+        if (a.distance_km !== b.distance_km) return a.distance_km - b.distance_km;
+        return Number(a.price) - Number(b.price);
+      });
+    } else {
+      annotated.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+
     res.status(200).json({
       success: true,
-      count: data.length,
-      data,
+      count: annotated.length,
+      data: annotated,
     });
   } catch (err) {
     res.status(500).json({
@@ -479,6 +534,78 @@ exports.searchProducts = async (req, res) => {
     });
   }
 };
+
+// Section 11b: Get Nearby Products
+// GET /api/v1/products/nearby?latitude=...&longitude=...&radius=10&limit=10
+// Returns available products sorted nearest-shop-first (then
+// lowest-price-first) within the given radius (km, default 10). Backs the
+// home page's "Products Nearby" section. Requires latitude/longitude —
+// unlike searchProducts, there's no sensible fallback ordering for "nearby"
+// without a location.
+exports.getNearbyProducts = asyncHandler(async (req, res) => {
+  try {
+    const latitude = parseFloat(req.query.latitude);
+    const longitude = parseFloat(req.query.longitude);
+    const radius = req.query.radius != null ? parseFloat(req.query.radius) : 10;
+    const limit = parseInt(req.query.limit) || 10;
+
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      return res.status(400).json({
+        success: false,
+        error: 'latitude and longitude query parameters are required',
+      });
+    }
+
+    const { data, error } = await supabase
+      .from('products')
+      .select(`
+        *,
+        shops (
+          id,
+          name,
+          latitude,
+          longitude,
+          address
+        )
+      `)
+      .eq('is_available', true);
+
+    if (error) throw error;
+
+    const nearby = (data || [])
+      .map((product) => {
+        const distanceKm = haversineDistanceKm(
+          latitude,
+          longitude,
+          product.shops?.latitude,
+          product.shops?.longitude
+        );
+        return {
+          ...product,
+          shop_name: product.shops?.name || null,
+          distance_km: distanceKm != null ? Number(distanceKm.toFixed(2)) : null,
+          in_stock: product.stock_quantity == null || product.stock_quantity > 0,
+        };
+      })
+      .filter((product) => product.distance_km != null && product.distance_km <= radius)
+      .sort((a, b) => {
+        if (a.distance_km !== b.distance_km) return a.distance_km - b.distance_km;
+        return Number(a.price) - Number(b.price);
+      })
+      .slice(0, limit);
+
+    res.status(200).json({
+      success: true,
+      count: nearby.length,
+      data: nearby,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
 
 // Section 12: Get Search Suggestions
 // GET /api/v1/products/suggestions?q=...
@@ -628,8 +755,11 @@ exports.getProductById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Fetch product details first so we have the category for interest tracking
-    const { data, error } = await products.getProductById(id);
+    // Fetch product details first so we have the category for interest
+    // tracking. includeShop=true so the response carries the shop's name/
+    // address/phone/city — the product details page needs to show which
+    // shop sells it and where that shop is.
+    const { data, error } = await products.getProductById(id, true);
 
     if (error) throw error;
 
