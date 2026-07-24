@@ -42,6 +42,7 @@ const {
   getTrendingSearches,
   getSimilarProducts,
   getRecentlyTrendingProducts,
+  getNearbyProducts,
 } = require('../controllers/product.controller');
 
 // Section 4: Personalized Feed Routes (Authenticated)
@@ -124,6 +125,42 @@ router.get( '/recently-viewed',protect,getRecentlyViewedProducts);
  *         description: List of trending products
  */
 router.get('/trending', getTrendingProducts);
+
+/**
+ * @swagger
+ * /products/nearby:
+ *   get:
+ *     summary: Get products near the customer's location, nearest and cheapest first
+ *     tags: [Products - Discovery]
+ *     parameters:
+ *       - in: query
+ *         name: latitude
+ *         required: true
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: longitude
+ *         required: true
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: radius
+ *         schema:
+ *           type: number
+ *           default: 10
+ *         description: Search radius in kilometers
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *     responses:
+ *       200:
+ *         description: Nearby products, sorted nearest then cheapest
+ *       400:
+ *         description: Missing latitude/longitude
+ */
+router.get('/nearby', getNearbyProducts);
 
 /**
  * @swagger
