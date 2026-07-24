@@ -16,6 +16,23 @@ module.exports = (sequelize, DataTypes) => {
         key: 'id',
       },
     },
+    // The customer who placed the order. Nullable because orders created
+    // before this column existed won't have one, but every new order
+    // created through POST /orders always sets it.
+    customer_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
+    // 'delivery' | 'pickup'
+    delivery_type: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'delivery',
+    },
     order_number: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -74,6 +91,10 @@ module.exports = (sequelize, DataTypes) => {
   Order.associate = (models) => {
     // An order belongs to a shop
     Order.belongsTo(models.Shop, { foreignKey: 'shop_id', as: 'shop' });
+    // An order belongs to the customer who placed it
+    Order.belongsTo(models.User, { foreignKey: 'customer_id', as: 'customer' });
+    // An order has many line items (one per product purchased)
+    Order.hasMany(models.OrderItem, { foreignKey: 'order_id', as: 'items' });
   };
 
   return Order;
