@@ -27,3 +27,40 @@ exports.updateOrderValidator = [
     .isBoolean()
     .withMessage('invoice_sent must be a boolean'),
 ];
+
+// Create Order (Place Order) Validator
+// Used on: POST /api/v1/orders
+// Validates the minimum a customer must supply to place an order: at
+// least one product line item, and — since delivery is the default —
+// a delivery address whenever delivery_type isn't 'pickup'.
+// Why items is a nested array: A single order can contain multiple
+// products from the same shop (e.g. added from a shop page), even though
+// the product-details "Place Order" button only ever sends one.
+exports.createOrderValidator = [
+  body('items')
+    .isArray({ min: 1 })
+    .withMessage('At least one item is required'),
+
+  body('items.*.product_id')
+    .isUUID()
+    .withMessage('Each item must have a valid product ID'),
+
+  body('items.*.quantity')
+    .isInt({ min: 1 })
+    .withMessage('Each item quantity must be a positive integer'),
+
+  body('delivery_type')
+    .optional()
+    .isIn(['delivery', 'pickup'])
+    .withMessage('Delivery type must be delivery or pickup'),
+
+  body('payment_method')
+    .optional()
+    .isIn(['cod'])
+    .withMessage('Only cash on delivery (cod) is supported right now'),
+
+  body('delivery_address')
+    .if(body('delivery_type').not().equals('pickup'))
+    .notEmpty()
+    .withMessage('Delivery address is required unless picking up in-store'),
+];
