@@ -81,7 +81,7 @@ exports.userExists = async (firebaseUid) => {
  * @param {string} userData.firebase_uid - Firebase UID
  * @param {string} userData.email - User email
  * @param {string} userData.full_name - User full name
- * @param {string} [userData.role='consumer'] - User role
+ * @param {string} [userData.role='customer'] - User role
  * @param {string} [userData.phone] - User phone number
  * @param {string} [userData.avatar_url] - User avatar URL
  * @param {number} [userData.latitude] - User latitude
@@ -93,7 +93,7 @@ exports.registerUser = async (userData) => {
     firebase_uid,
     email,
     full_name,
-    role = 'consumer',
+    role = 'customer',
     phone,
     avatar_url,
     latitude,
@@ -187,11 +187,11 @@ exports.updateUserProfile = async (userId, updates) => {
 /**
  * Update user role (admin only)
  * @param {string} userId - User UUID
- * @param {string} role - New role ('consumer', 'shop_owner', 'admin')
+ * @param {string} role - New role ('customer', 'shop_owner', 'admin')
  * @returns {Promise<{data, error}>}
  */
 exports.updateUserRole = async (userId, role) => {
-  const validRoles = ['consumer', 'shop_owner', 'admin'];
+  const validRoles = ['customer', 'shop_owner', 'admin'];
   
   if (!validRoles.includes(role)) {
     return {

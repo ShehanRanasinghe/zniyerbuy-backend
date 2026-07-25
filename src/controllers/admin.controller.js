@@ -97,12 +97,12 @@ exports.updateUserRole = asyncHandler(async (req, res) => {
     const roleMap = {
       Admin: 'admin',
       Seller: 'shop_owner',
-      User: 'consumer',
+      User: 'customer',
     };
 
     const { data, error } = await supabase
       .from('users')
-      .update({ role: roleMap[role] || 'user' })
+      .update({ role: roleMap[role] || 'customer' })
       .eq('id', id)
       .select()
       .single();
