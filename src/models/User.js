@@ -45,6 +45,22 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DECIMAL(9, 6),
       allowNull: true,
     },
+    // Human-readable address for the saved latitude/longitude, captured by
+    // the Profile page's map location picker (reverse-geocoded on the
+    // client, then saved here alongside the coordinates).
+    address: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+    },
+    // Customer's preferred "show me things within X km" radius, used to
+    // filter the home screen's nearby products/shops. One of 1, 2, 5, 10,
+    // 20 (enforced client-side; not constrained at the DB level since it's
+    // just a display/filter preference, not an integrity-critical value).
+    nearby_radius_km: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 5,
+    },
   }, {
     tableName: 'users',
     underscored: true,
