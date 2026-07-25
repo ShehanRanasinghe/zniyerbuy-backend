@@ -98,6 +98,47 @@ exports.getShopReviews = async (req, res) => {
   }
 };
 
+// Section 3b: Get My Reviews
+// GET /api/v1/reviews/mine
+// Returns only the reviews written by the authenticated user, with the
+// shop name (and product name, when the review is product-linked)
+// attached. Backs the Profile page's overview "ratings" section, which
+// must show the customer's own reviews only — not other customers'.
+exports.getMyReviews = asyncHandler(async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('reviews')
+      .select(`
+        *,
+        shops (
+          id,
+          name,
+          logo_url
+        ),
+        products (
+          id,
+          name,
+          image_url
+        )
+      `)
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      count: data ? data.length : 0,
+      data: data || [],
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
 // Section 4: Get Product Reviews
 // GET /api/v1/reviews/product/:productId
 // Retrieves reviews left for a specific product.
