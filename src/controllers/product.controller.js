@@ -9,6 +9,7 @@ const { products, recommendation } = require('../services');
 const asyncHandler = require('../utils/asyncHandler');
 const supabase = require('../config/supabase');
 const haversineDistanceKm = require('../utils/haversineDistanceKm');
+const { v4: uuidv4 } = require('uuid');
 
 // Section 2: Create Product
 // POST /api/v1/products
@@ -462,8 +463,10 @@ exports.searchProducts = async (req, res) => {
       await supabase
         .from('search_history')
         .insert({
+          id: uuidv4(),
           user_id: req.user.id,
           keyword: q,
+          searched_at: new Date().toISOString(),
         });
     }
 
@@ -479,7 +482,7 @@ exports.searchProducts = async (req, res) => {
           address
         )
       `)
-      .ilike('name', `%${q || ''}%`);
+      .or(`name.ilike.%${q || ''}%,category.ilike.%${q || ''}%,description.ilike.%${q || ''}%`);
 
     if (category) {
       query = query.eq('category', category);

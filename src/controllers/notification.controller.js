@@ -7,6 +7,7 @@
 // Section 1: Dependencies
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
+const { v4: uuidv4 } = require('uuid');
 
 // Section 2: Create Notification
 // POST /api/v1/notifications
@@ -31,11 +32,13 @@ exports.createNotification = asyncHandler(async (req, res) => {
       .from('notifications')
       .insert([
         {
+          id: uuidv4(),
           user_id,
           title,
           body,
           type: type || 'system',
           related_id,
+          created_at: new Date().toISOString(),
         },
       ])
       .select()

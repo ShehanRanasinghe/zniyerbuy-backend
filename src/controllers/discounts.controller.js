@@ -8,6 +8,7 @@
 // Section 1: Dependencies
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
+const { v4: uuidv4 } = require('uuid');
 
 // Section 2: Create Deal
 // POST /api/v1/deals
@@ -108,6 +109,7 @@ const buildDiscountPayload = async (reqBody, userId = null, userRole = null) => 
   const now = new Date();
 
   return {
+    id: uuidv4(),
     shop_id: resolvedShopId,
     product_id: product_id || null,
     title: title || '',

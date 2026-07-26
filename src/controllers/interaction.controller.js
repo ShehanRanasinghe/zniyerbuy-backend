@@ -7,6 +7,7 @@
 // Section 1: Dependencies
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
+const { v4: uuidv4 } = require('uuid');
 
 // Section 2: Track Interaction
 // POST /api/v1/interactions
@@ -31,11 +32,13 @@ exports.trackInteraction = asyncHandler(async (req, res) => {
       .from('user_interactions')
       .insert([
         {
+          id: uuidv4(),
           user_id: req.user.id,
           product_id,
           shop_id,
           deal_id,
           action_type,
+          created_at: new Date().toISOString(),
         },
       ])
       .select()

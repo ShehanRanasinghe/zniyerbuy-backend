@@ -8,6 +8,7 @@
 // Section 1: Dependencies
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
+const { v4: uuidv4 } = require('uuid');
 
 // Section 2: Add Favorite
 // POST /api/v1/favorites
@@ -28,7 +29,8 @@ exports.addFavorite = asyncHandler(async (req, res) => {
     const type = req.body.type || 'product';
     const { product_id, shop_id, discount_id } = req.body;
 
-    const insertRow = { user_id: req.user.id, type };
+    const now = new Date().toISOString();
+    const insertRow = { id: uuidv4(), user_id: req.user.id, type, created_at: now };
     if (type === 'product') insertRow.product_id = product_id;
     if (type === 'shop') insertRow.shop_id = shop_id;
     if (type === 'deal') insertRow.discount_id = discount_id;
@@ -75,6 +77,12 @@ exports.addFavorite = asyncHandler(async (req, res) => {
       data,
     });
   } catch (err) {
+    console.error('[addFavorite] Failed to add favorite:', {
+      message: err.message,
+      code: err.code,
+      details: err.details,
+      hint: err.hint,
+    });
     res.status(500).json({
       success: false,
       error: err.message,
@@ -85,43 +93,23 @@ exports.addFavorite = asyncHandler(async (req, res) => {
 // Section 3: Get User's Favorites
 // GET /api/v1/favorites?type=product|shop|deal
 // Retrieves all favorites for the authenticated user - products, shops,
-// and deals alike - optionally filtered to one type. Joins whichever
-// entity table applies (a row only ever has one of product_id/shop_id/
-// discount_id set, so only one of the three embeds will be non-null on
-// any given row) so the client can render the favorites list without
-// extra requests.
-// Why ordered by created_at descending: Shows most recently favorited
-// items first, matching user expectation.
+// and deals alike - optionally filtered to one type.
+//
+// Why this doesn't use a single embedded-join query: an earlier version
+// selected products/shops/discounts as embedded resources in one request
+// (`.select('*, products(...), shops(...), discounts(...)')`), relying on
+// PostgREST recognizing the shop_id/discount_id foreign keys added by the
+// favorites-extension migration. That consistently 500'd in practice, so
+// instead this fetches the favorites rows plain, then batch-fetches
+// whichever products/shops/discounts are referenced (three simple
+// `.in('id', [...])` queries, no relationship syntax at all) and merges
+// them in JS. Slightly more code, but has no dependency on PostgREST's
+// schema/relationship cache being in any particular state.
 exports.getFavorites = async (req, res) => {
   try {
     let query = supabase
       .from('favorites')
-      .select(`
-        *,
-        products (
-          id,
-          name,
-          price,
-          image_url,
-          category,
-          is_available
-        ),
-        shops (
-          id,
-          name,
-          logo_url,
-          address,
-          category
-        ),
-        discounts (
-          id,
-          title,
-          deal_price,
-          discounted_price,
-          image_url,
-          shop_id
-        )
-      `)
+      .select('*')
       .eq('user_id', req.user.id)
       .order('created_at', { ascending: false });
 
@@ -129,16 +117,49 @@ exports.getFavorites = async (req, res) => {
       query = query.eq('type', req.query.type);
     }
 
-    const { data, error } = await query;
+    const { data: favorites, error } = await query;
 
     if (error) throw error;
 
+    const productIds = [...new Set(favorites.filter((f) => f.product_id).map((f) => f.product_id))];
+    const shopIds = [...new Set(favorites.filter((f) => f.shop_id).map((f) => f.shop_id))];
+    const discountIds = [...new Set(favorites.filter((f) => f.discount_id).map((f) => f.discount_id))];
+
+    const [productsRes, shopsRes, discountsRes] = await Promise.all([
+      productIds.length
+        ? supabase.from('products').select('id, name, price, image_url, category, is_available').in('id', productIds)
+        : { data: [] },
+      shopIds.length
+        ? supabase.from('shops').select('id, name, logo_url, address, category').in('id', shopIds)
+        : { data: [] },
+      discountIds.length
+        ? supabase.from('discounts').select('id, title, deal_price, discounted_price, image_url, shop_id').in('id', discountIds)
+        : { data: [] },
+    ]);
+
+    const productsById = Object.fromEntries((productsRes.data || []).map((p) => [p.id, p]));
+    const shopsById = Object.fromEntries((shopsRes.data || []).map((s) => [s.id, s]));
+    const discountsById = Object.fromEntries((discountsRes.data || []).map((d) => [d.id, d]));
+
+    const enriched = favorites.map((f) => ({
+      ...f,
+      products: f.product_id ? productsById[f.product_id] || null : null,
+      shops: f.shop_id ? shopsById[f.shop_id] || null : null,
+      discounts: f.discount_id ? discountsById[f.discount_id] || null : null,
+    }));
+
     res.status(200).json({
       success: true,
-      count: data.length,
-      data,
+      count: enriched.length,
+      data: enriched,
     });
   } catch (err) {
+    console.error('[getFavorites] Failed to load favorites:', {
+      message: err.message,
+      code: err.code,
+      details: err.details,
+      hint: err.hint,
+    });
     res.status(500).json({
       success: false,
       error: err.message,

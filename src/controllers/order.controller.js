@@ -7,6 +7,7 @@
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
 const generateOrderNumber = require('../utils/generateOrderNumber');
+const { v4: uuidv4 } = require('uuid');
 
 // GET /api/v1/orders
 // Retrieves all orders for the authenticated shop owner.
@@ -177,6 +178,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
       .from('orders')
       .insert([
         {
+          id: uuidv4(),
           shop_id,
           customer_id: req.user.id,
           customer_name: req.user.full_name,
@@ -190,6 +192,8 @@ exports.createOrder = asyncHandler(async (req, res) => {
           total_amount,
           items_count,
           status: 'pending',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         },
       ])
       .select()

@@ -8,6 +8,7 @@
 // Section 1: Dependencies
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
+const { v4: uuidv4 } = require('uuid');
 
 // Section 2: Create Review
 // POST /api/v1/reviews
@@ -32,10 +33,13 @@ exports.createReview = asyncHandler(async (req, res) => {
       .from('reviews')
       .insert([
         {
+          id: uuidv4(),
           user_id: req.user.id,
           shop_id,
           rating,
           comment,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         },
       ])
       .select()
@@ -54,6 +58,12 @@ exports.createReview = asyncHandler(async (req, res) => {
       data,
     });
   } catch (err) {
+    console.error('[createReview] Failed to create review:', {
+      message: err.message,
+      code: err.code,
+      details: err.details,
+      hint: err.hint,
+    });
     res.status(500).json({
       success: false,
       error: err.message,
