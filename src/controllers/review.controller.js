@@ -8,6 +8,7 @@
 // Section 1: Dependencies
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
+const { v4: uuidv4 } = require('uuid');
 
 // Section 2: Create Review
 // POST /api/v1/reviews
@@ -32,10 +33,13 @@ exports.createReview = asyncHandler(async (req, res) => {
       .from('reviews')
       .insert([
         {
+          id: uuidv4(),
           user_id: req.user.id,
           shop_id,
           rating,
           comment,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         },
       ])
       .select()
@@ -54,6 +58,12 @@ exports.createReview = asyncHandler(async (req, res) => {
       data,
     });
   } catch (err) {
+    console.error('[createReview] Failed to create review:', {
+      message: err.message,
+      code: err.code,
+      details: err.details,
+      hint: err.hint,
+    });
     res.status(500).json({
       success: false,
       error: err.message,
@@ -97,6 +107,47 @@ exports.getShopReviews = async (req, res) => {
     });
   }
 };
+
+// Section 3b: Get My Reviews
+// GET /api/v1/reviews/mine
+// Returns only the reviews written by the authenticated user, with the
+// shop name (and product name, when the review is product-linked)
+// attached. Backs the Profile page's overview "ratings" section, which
+// must show the customer's own reviews only — not other customers'.
+exports.getMyReviews = asyncHandler(async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('reviews')
+      .select(`
+        *,
+        shops (
+          id,
+          name,
+          logo_url
+        ),
+        products (
+          id,
+          name,
+          image_url
+        )
+      `)
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      count: data ? data.length : 0,
+      data: data || [],
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
 
 // Section 4: Get Product Reviews
 // GET /api/v1/reviews/product/:productId

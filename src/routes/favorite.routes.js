@@ -19,6 +19,7 @@ const {
 const {
   addFavorite,
   getFavorites,
+  removeFavorite,
 } = require('../controllers/favorite.controller');
 
 // Section 3: Route Definitions
@@ -73,5 +74,33 @@ router.post(
   validate,
   addFavorite
 );
+
+/**
+ * @swagger
+ * /favorites/{id}:
+ *   delete:
+ *     summary: Remove a product from favorites
+ *     tags: [Favorites]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Favorite record ID (not the product ID)
+ *     responses:
+ *       200:
+ *         description: Favorite removed
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Not the owner of this favorite
+ *       404:
+ *         description: Favorite not found
+ */
+router.delete('/:id', protect, removeFavorite);
 
 module.exports = router;

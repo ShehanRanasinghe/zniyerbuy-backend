@@ -8,38 +8,68 @@
 // Section 1: Dependencies
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
+const { v4: uuidv4 } = require('uuid');
 
 // Section 2: Add Favorite
 // POST /api/v1/favorites
-// Adds a product to the authenticated user's favorites list.
-// After inserting, it calls two Supabase RPC functions:
+// Adds a product, shop, or deal to the authenticated user's favorites
+// list, based on `type` ('product' | 'shop' | 'deal', defaults to
+// 'product' for backward compatibility with existing callers).
+// For product favorites only, also updates two denormalized stats via
+// Supabase RPC:
 //   - increment_product_favorites: increases the product's favorites_count
-//   - update_recommendation_score: recalculates the product's recommendation score based on the new favorite
-// Why RPC calls after insert: The favorites_count and recommendation_score are denormalized fields on the products table. 
-// Updating them via RPC keeps aggregated stats accurate without requiring expensive JOINs on every product listing query.
-
+//   - update_recommendation_score: recalculates the product's recommendation score
+// Why RPC calls after insert: favorites_count and recommendation_score are
+// denormalized fields on the products table. Updating them via RPC keeps
+// aggregated stats accurate without requiring expensive JOINs on every
+// product listing query. Shops/deals don't have equivalent denormalized
+// counters, so this step is skipped for those types.
 exports.addFavorite = asyncHandler(async (req, res) => {
   try {
-    const { product_id } = req.body;
+    const type = req.body.type || 'product';
+    const { product_id, shop_id, discount_id } = req.body;
 
-    // Insert a new favorite record linking user and product
+    const now = new Date().toISOString();
+    const insertRow = { id: uuidv4(), user_id: req.user.id, type, created_at: now };
+    if (type === 'product') insertRow.product_id = product_id;
+    if (type === 'shop') insertRow.shop_id = shop_id;
+    if (type === 'deal') insertRow.discount_id = discount_id;
+
     const { data, error } = await supabase
       .from('favorites')
-      .insert([
-        {
-          user_id: req.user.id,
-          product_id,
-        },
-      ])
+      .insert([insertRow])
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      // Postgres unique_violation - this exact favorite already exists.
+      // Treat as a success rather than an error, since the end state the
+      // client wants ("this is favorited") is already true.
+      if (error.code === '23505') {
+        const { data: existing } = await supabase
+          .from('favorites')
+          .select('*')
+          .eq('user_id', req.user.id)
+          .eq('type', type)
+          .eq(type === 'product' ? 'product_id' : type === 'shop' ? 'shop_id' : 'discount_id',
+            type === 'product' ? product_id : type === 'shop' ? shop_id : discount_id)
+          .single();
 
-    // Update denormalized product stats via Supabase RPC functions
-    await supabase.rpc('increment_product_favorites', {product_id,});
+        return res.status(200).json({
+          success: true,
+          message: 'Already in favorites',
+          data: existing || null,
+        });
+      }
+      throw error;
+    }
 
-    await supabase.rpc('update_recommendation_score', {product_id,});
+    // Update denormalized product stats via Supabase RPC functions —
+    // product favorites only.
+    if (type === 'product') {
+      await supabase.rpc('increment_product_favorites', { product_id });
+      await supabase.rpc('update_recommendation_score', { product_id });
+    }
 
     res.status(201).json({
       success: true,
@@ -47,6 +77,12 @@ exports.addFavorite = asyncHandler(async (req, res) => {
       data,
     });
   } catch (err) {
+    console.error('[addFavorite] Failed to add favorite:', {
+      message: err.message,
+      code: err.code,
+      details: err.details,
+      hint: err.hint,
+    });
     res.status(500).json({
       success: false,
       error: err.message,
@@ -55,33 +91,141 @@ exports.addFavorite = asyncHandler(async (req, res) => {
 });
 
 // Section 3: Get User's Favorites
-// GET /api/v1/favorites
-// Retrieves all favorite products for the authenticated user.
-// Joins with the products table to include product details (name, price, image) so the client can display the favorites list without additional API calls.
-// Why ordered by created_at descending: Shows most recently favorited products first, matching user expectation.
-
+// GET /api/v1/favorites?type=product|shop|deal
+// Retrieves all favorites for the authenticated user - products, shops,
+// and deals alike - optionally filtered to one type.
+//
+// Why this doesn't use a single embedded-join query: an earlier version
+// selected products/shops/discounts as embedded resources in one request
+// (`.select('*, products(...), shops(...), discounts(...)')`), relying on
+// PostgREST recognizing the shop_id/discount_id foreign keys added by the
+// favorites-extension migration. That consistently 500'd in practice, so
+// instead this fetches the favorites rows plain, then batch-fetches
+// whichever products/shops/discounts are referenced (three simple
+// `.in('id', [...])` queries, no relationship syntax at all) and merges
+// them in JS. Slightly more code, but has no dependency on PostgREST's
+// schema/relationship cache being in any particular state.
 exports.getFavorites = async (req, res) => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('favorites')
-      .select(`
-        *,
-        products (
-          id,
-          name,
-          price,
-          image_url
-        )
-      `)
+      .select('*')
       .eq('user_id', req.user.id)
       .order('created_at', { ascending: false });
 
+    if (req.query.type) {
+      query = query.eq('type', req.query.type);
+    }
+
+    const { data: favorites, error } = await query;
+
     if (error) throw error;
+
+    const productIds = [...new Set(favorites.filter((f) => f.product_id).map((f) => f.product_id))];
+    const shopIds = [...new Set(favorites.filter((f) => f.shop_id).map((f) => f.shop_id))];
+    const discountIds = [...new Set(favorites.filter((f) => f.discount_id).map((f) => f.discount_id))];
+
+    const [productsRes, shopsRes, discountsRes] = await Promise.all([
+      productIds.length
+        ? supabase.from('products').select('id, name, price, image_url, category, is_available').in('id', productIds)
+        : { data: [] },
+      shopIds.length
+        ? supabase.from('shops').select('id, name, logo_url, address, category').in('id', shopIds)
+        : { data: [] },
+      discountIds.length
+        ? supabase.from('discounts').select('id, title, deal_price, discounted_price, image_url, shop_id').in('id', discountIds)
+        : { data: [] },
+    ]);
+
+    const productsById = Object.fromEntries((productsRes.data || []).map((p) => [p.id, p]));
+    const shopsById = Object.fromEntries((shopsRes.data || []).map((s) => [s.id, s]));
+    const discountsById = Object.fromEntries((discountsRes.data || []).map((d) => [d.id, d]));
+
+    const enriched = favorites.map((f) => ({
+      ...f,
+      products: f.product_id ? productsById[f.product_id] || null : null,
+      shops: f.shop_id ? shopsById[f.shop_id] || null : null,
+      discounts: f.discount_id ? discountsById[f.discount_id] || null : null,
+    }));
 
     res.status(200).json({
       success: true,
-      count: data.length,
-      data,
+      count: enriched.length,
+      data: enriched,
+    });
+  } catch (err) {
+    console.error('[getFavorites] Failed to load favorites:', {
+      message: err.message,
+      code: err.code,
+      details: err.details,
+      hint: err.hint,
+    });
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+// Section 4: Remove Favorite
+// DELETE /api/v1/favorites/:id
+// Removes a favorite record (by its own id, not the product id) for the
+// authenticated user, then decrements the product's denormalized
+// favorites_count via the same RPC family used in addFavorite.
+// Why scoped to req.user.id: Prevents one user from deleting another
+// user's favorite by guessing/enumerating favorite ids.
+// Why this was missing: The mobile app's favoritesAPI.remove(id) call had
+// no matching backend route, so "unfavorite" only ever updated local state
+// and never persisted server-side.
+exports.removeFavorite = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Look up the favorite first so we know which product to decrement
+    // and so we can confirm the record belongs to the requesting user.
+    const { data: favorite, error: findError } = await supabase
+      .from('favorites')
+      .select('id, type, product_id, user_id')
+      .eq('id', id)
+      .single();
+
+    if (findError || !favorite) {
+      return res.status(404).json({
+        success: false,
+        error: 'Favorite not found',
+      });
+    }
+
+    if (favorite.user_id !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to remove this favorite',
+      });
+    }
+
+    const { error: deleteError } = await supabase
+      .from('favorites')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) throw deleteError;
+
+    // Best-effort denormalized stat update — mirrors addFavorite's RPC
+    // calls. Product favorites only; shops/deals have no equivalent
+    // counter. Not fatal if it fails, since the favorite itself is removed.
+    if (favorite.type === 'product' && favorite.product_id) {
+      try {
+        await supabase.rpc('decrement_product_favorites', {
+          product_id: favorite.product_id,
+        });
+      } catch (rpcErr) {
+        console.error('[removeFavorite] favorites_count decrement failed:', rpcErr.message);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Removed from favorites',
     });
   } catch (err) {
     res.status(500).json({
@@ -89,4 +233,4 @@ exports.getFavorites = async (req, res) => {
       error: err.message,
     });
   }
-};
+});

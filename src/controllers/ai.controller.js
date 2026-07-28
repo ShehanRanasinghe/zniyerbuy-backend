@@ -170,7 +170,85 @@ exports.predictDemand = asyncHandler(async (req, res) => {
   }
 });
 
-// Section 6: Health Check for AI Module Connection
+// Section 6: Get Shop AI Predictions (Seller Analytics Dashboard)
+// GET /api/v1/ai/predictions/shop/:shopId
+// Returns next-month predictions (revenue, daily revenue, expected users,
+// top category, daily revenue forecast, category sales prediction) for a
+// single shop, computed live by the AI module from that shop's real
+// orders + products. Powers the "AI-Powered Predictions for Next Month"
+// section on the seller Analytics page.
+// Why verify ownership: the AI module trusts whatever shop_id it's given,
+// so this route is the one place that checks the requesting user actually
+// owns (or administers) the shop before proxying the request through.
+exports.getShopPredictions = asyncHandler(async (req, res) => {
+  try {
+    const { shopId } = req.params;
+
+    if (!shopId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Shop ID is required',
+      });
+    }
+
+    // Admins can view predictions for any shop; shop owners only their own.
+    if (req.user.role !== 'admin') {
+      const { data: shop, error: shopError } = await supabase
+        .from('shops')
+        .select('id, owner_id')
+        .eq('id', shopId)
+        .single();
+
+      if (shopError || !shop) {
+        return res.status(404).json({
+          success: false,
+          error: 'Shop not found',
+        });
+      }
+
+      if (shop.owner_id !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          error: "You do not have access to this shop's predictions",
+        });
+      }
+    }
+
+    // Call AI module for live shop predictions
+    let response;
+    try {
+      response = await fetch(`${AI_MODULE_URL}/predictions/shop/${shopId}`);
+    } catch (networkErr) {
+      // fetch() throws (not a rejected response) when the AI module can't
+      // be reached at all — wrong port, service not started, crashed, etc.
+      return res.status(503).json({
+        success: false,
+        error: 'AI prediction service is currently unavailable. Please make sure the AI module is running and try again.',
+      });
+    }
+
+    if (!response.ok) {
+      return res.status(502).json({
+        success: false,
+        error: `AI module responded with an error (status ${response.status}).`,
+      });
+    }
+
+    const data = await response.json();
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message || 'Failed to get shop predictions',
+    });
+  }
+});
+
+// Section 7: Health Check for AI Module Connection
 // GET /api/v1/ai/health
 // Checks if the AI module is reachable and responding
 exports.checkAIHealth = asyncHandler(async (req, res) => {

@@ -8,6 +8,7 @@
 // Section 1: Dependencies
 const supabase = require('../config/supabase');
 const asyncHandler = require('../utils/asyncHandler');
+const { v4: uuidv4 } = require('uuid');
 
 // Section 2: Create Deal
 // POST /api/v1/deals
@@ -108,6 +109,7 @@ const buildDiscountPayload = async (reqBody, userId = null, userRole = null) => 
   const now = new Date();
 
   return {
+    id: uuidv4(),
     shop_id: resolvedShopId,
     product_id: product_id || null,
     title: title || '',
@@ -194,6 +196,19 @@ exports.getDiscounts = async (req, res) => {
 
     if (req.query.shop_id) {
       query = query.eq('shop_id', req.query.shop_id);
+    }
+
+    // Optional filter for "currently live" deals only — used by the
+    // mobile app's home page "Deals and Promotions" section, which should
+    // never show an expired or manually deactivated deal. Existing callers
+    // (admin panel, shop web) that don't pass ?active=true keep seeing
+    // every deal, unaffected.
+    if (req.query.active === 'true') {
+      const now = new Date().toISOString();
+      query = query
+        .eq('is_active', true)
+        .lte('start_date', now)
+        .gte('end_date', now);
     }
 
     const { data, error } = await query.order('created_at', { ascending: false });

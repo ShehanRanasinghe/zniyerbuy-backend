@@ -18,7 +18,7 @@ const asyncHandler = require('../utils/asyncHandler');
 //   1. Extract user data from request body
 //   2. Check if a user with the same firebase_uid already exists
 //   3. If exists, return 400 to prevent duplicate registrations
-//   4. Insert new user record with default role 'consumer'
+//   4. Insert new user record with default role 'customer'
 //   5. Return the created user data
 // Why check for existing user first: Prevents duplicate profiles when the client retries registration (e.g., due to network issues).
 
@@ -36,7 +36,7 @@ exports.registerUser = asyncHandler(async (req, res) => {
       firebase_uid,
       email,
       full_name,
-      role: role || 'consumer',
+      role: role || 'customer',
     });
 
     if (error) {

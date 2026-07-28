@@ -14,7 +14,7 @@ const { body } = require('express-validator');
 //   - email: must be a valid email format
 //   - full_name: required (user's display name)
 //   - role: optional, must be one of the allowed roles if provided
-// Why role is optional: Defaults to 'consumer' in the controller if not specified. 
+// Why role is optional: Defaults to 'customer' in the controller if not specified. 
 // Only specific roles are allowed to prevent users from self-assigning admin privileges.
 exports.registerValidator = [
   body('firebase_uid')
@@ -31,7 +31,7 @@ exports.registerValidator = [
 
   body('role')
     .optional()
-    .isIn(['consumer', 'shop_owner', 'admin'])
+    .isIn(['customer', 'shop_owner', 'admin'])
     .withMessage('Invalid role'),
 ];
 

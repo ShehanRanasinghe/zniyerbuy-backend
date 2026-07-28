@@ -19,7 +19,24 @@ const {
 const {
   createReview,
   getShopReviews,
+  getMyReviews,
 } = require('../controllers/review.controller');
+
+/**
+ * @swagger
+ * /reviews/mine:
+ *   get:
+ *     summary: Get the authenticated user's own reviews
+ *     tags: [Reviews]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of the user's own reviews
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/mine', protect, getMyReviews);
 
 // Section 3: Route Definitions
 // GET /shop/:shopId - Get all reviews for a specific shop (public)
