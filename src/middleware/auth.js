@@ -50,8 +50,14 @@ exports.protect = async (req, res, next) => {
       firebase_uid: user.firebase_uid,
       email: user.email,
       full_name: user.full_name,
+      phone: user.phone,
       role: user.role,
       avatar_url: user.avatar_url,
+      address: user.address,
+      latitude: user.latitude,
+      longitude: user.longitude,
+      nearby_radius_km: user.nearby_radius_km,
+      created_at: user.created_at,
     };
 
     next();

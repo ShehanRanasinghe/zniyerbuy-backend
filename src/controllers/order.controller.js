@@ -89,10 +89,26 @@ exports.createOrder = asyncHandler(async (req, res) => {
 
     const productIds = [...new Set(items.map((item) => item.product_id))];
 
-    const { data: dbProducts, error: productsError } = await supabase
-      .from('products')
-      .select('id, name, price, shop_id, is_available, stock_quantity')
-      .in('id', productIds);
+    // Products and active-deals lookups are independent of each other (the
+    // deals query only needs productIds, not the products query's result),
+    // so run them concurrently instead of one-after-another.
+    const now = new Date().toISOString();
+    const [
+      { data: dbProducts, error: productsError },
+      { data: activeDeals },
+    ] = await Promise.all([
+      supabase
+        .from('products')
+        .select('id, name, price, shop_id, is_available, stock_quantity')
+        .in('id', productIds),
+      supabase
+        .from('discounts')
+        .select('id, product_id, deal_price, discounted_price')
+        .in('product_id', productIds)
+        .eq('is_active', true)
+        .lte('start_date', now)
+        .gte('end_date', now),
+    ]);
 
     if (productsError) throw productsError;
 
@@ -130,16 +146,6 @@ exports.createOrder = asyncHandler(async (req, res) => {
         });
       }
     }
-
-    // Pull any active deal per product so the order is priced correctly.
-    const now = new Date().toISOString();
-    const { data: activeDeals } = await supabase
-      .from('discounts')
-      .select('id, product_id, deal_price, discounted_price')
-      .in('product_id', productIds)
-      .eq('is_active', true)
-      .lte('start_date', now)
-      .gte('end_date', now);
 
     const dealByProduct = {};
     (activeDeals || []).forEach((deal) => {
@@ -215,10 +221,12 @@ exports.createOrder = asyncHandler(async (req, res) => {
     }
 
     // Best-effort stock decrement — not fatal if it fails, since the order
-    // itself already succeeded.
-    for (const item of items) {
-      const product = dbProducts.find((p) => p.id === item.product_id);
-      if (product.stock_quantity != null) {
+    // itself already succeeded. Run all items concurrently rather than
+    // one-by-one; each is an independent update to a different product row.
+    await Promise.all(
+      items.map(async (item) => {
+        const product = dbProducts.find((p) => p.id === item.product_id);
+        if (product.stock_quantity == null) return;
         try {
           await supabase
             .from('products')
@@ -227,8 +235,8 @@ exports.createOrder = asyncHandler(async (req, res) => {
         } catch (stockErr) {
           console.error(`[createOrder] Stock decrement failed for product ${product.id}:`, stockErr.message);
         }
-      }
-    }
+      })
+    );
 
     res.status(201).json({
       success: true,
