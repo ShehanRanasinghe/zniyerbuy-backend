@@ -443,23 +443,40 @@ exports.getRecentlyTrendingProducts = asyncHandler(async (req, res) => {
 // Also fixed column name from 'name' to 'product_name' to match the actual database schema.
 
 // Section 11: Search Products
-// GET /api/v1/products/search?q=...&latitude=...&longitude=...&category=...
+// GET /api/v1/products/search?q=...&latitude=...&longitude=...&category=...&log=true|false
 // Searches products by name (case-insensitive partial match) and, when the
 // customer's location is supplied, orders results nearest-shop-first, then
 // lowest-price-first — matching the home page search requirement (e.g.
 // searching "coffee beans" should surface the nearest shop with the
 // cheapest coffee beans at the top). Falls back to newest-first when no
 // location is supplied.
-// Also logs the search term to search_history for authenticated users, and
-// annotates every result with shop_name, distance_km, and in_stock so the
-// mobile search results list doesn't need a second request per item.
+// Also logs the search term to search_history for authenticated users (see
+// `log` param below), and annotates every result with shop_name,
+// distance_km, and in_stock so the mobile search results list doesn't need
+// a second request per item.
+//
+// FIX APPLIED (log param): The mobile search page calls this same endpoint
+// for BOTH the debounced live "search as you type" preview AND an
+// explicit, deliberate search (Enter / Search button / tapping a past
+// search). Previously every call logged to search_history unconditionally,
+// so typing "coffee" letter-by-letter created rows for "c", "co", "cof",
+// "coff"... - the recent searches list was mostly typing debris, not real
+// searches. Now the client passes `log=false` for the live-typing preview
+// and omits it (defaults to logging) for a deliberate search.
+//
+// FIX APPLIED (10-row cap): search_history had no retention limit at all -
+// it grew forever per user. After logging a new search, this now deletes
+// anything beyond the 10 most recent rows for that user (oldest evicted
+// first), so at most 10 raw rows ever exist per user at a time - matching
+// what getSearchHistory already returns on read.
 exports.searchProducts = async (req, res) => {
   try {
     const { q, category } = req.query;
+    const shouldLog = req.query.log !== 'false';
     const latitude = req.query.latitude != null ? parseFloat(req.query.latitude) : null;
     const longitude = req.query.longitude != null ? parseFloat(req.query.longitude) : null;
 
-    if (req.user && q?.trim()) {
+    if (req.user && q?.trim() && shouldLog) {
       await supabase
         .from('search_history')
         .insert({
@@ -468,6 +485,23 @@ exports.searchProducts = async (req, res) => {
           keyword: q,
           searched_at: new Date().toISOString(),
         });
+
+      // Enforce the 10-row-per-user cap. Non-critical - a failure here
+      // shouldn't fail the search itself, just log and move on.
+      try {
+        const { data: history, error: historyError } = await supabase
+          .from('search_history')
+          .select('id')
+          .eq('user_id', req.user.id)
+          .order('searched_at', { ascending: false });
+
+        if (!historyError && history && history.length > 10) {
+          const idsToDelete = history.slice(10).map((h) => h.id);
+          await supabase.from('search_history').delete().in('id', idsToDelete);
+        }
+      } catch (cleanupErr) {
+        console.error('[searchProducts] search_history cleanup failed:', cleanupErr.message);
+      }
     }
 
     let query = supabase
@@ -660,9 +694,17 @@ exports.getSearchSuggestions = asyncHandler(async (req, res) => {
 
 // Section 13: Get Search History
 // GET /api/v1/products/search-history
-// Returns the last 10 search queries made by the authenticated user.
-// Used to show Recent Searches in the client's search UI.
-// Why limit 10: Keeps the history manageable and matches common UX patterns for recent search lists.
+// Returns the last 10 *distinct* search queries made by the authenticated
+// user, most recent first. Used to show Recent Searches in the client's
+// search UI.
+// FIX APPLIED: Previously took the last 10 raw rows from search_history.
+// Since every search (including repeats of the same term) inserts a new
+// row, a user who searched "shoes" ten times in a row would see only
+// "shoes" ten times instead of their 10 most recent distinct searches.
+// Now fetches a larger raw window and dedupes by keyword (case-
+// insensitive) before capping at 10, keeping each keyword's most recent
+// occurrence — same dedupe-in-JS approach already used by
+// getRecentlyViewedProducts and getTrendingSearches below.
 
 exports.getSearchHistory = asyncHandler(async (req, res) => {
   try {
@@ -675,14 +717,24 @@ exports.getSearchHistory = asyncHandler(async (req, res) => {
       .order('searched_at', {
         ascending: false,
       })
-      .limit(10);
+      .limit(50);
 
     if (error) throw error;
 
+    const seen = new Set();
+    const deduped = [];
+    for (const row of data || []) {
+      const key = row.keyword.trim().toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(row);
+      if (deduped.length >= 10) break;
+    }
+
     res.status(200).json({
       success: true,
-      count: data.length,
-      data,
+      count: deduped.length,
+      data: deduped,
     });
   } catch (err) {
     res.status(500).json({
