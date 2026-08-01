@@ -125,6 +125,38 @@ exports.getTrendingProducts = asyncHandler(async (req, res) => {
   }
 });
 
+// Section 4b: Get Trending Categories
+// GET /api/v1/ai/trending/categories
+// Returns currently trending categories based on recent activity
+// Connects to the AI module's trending analysis (same service as
+// getTrendingProducts above, different endpoint - see
+// ai-module/app/routers/trending.py get_trending_categories).
+exports.getTrendingCategories = asyncHandler(async (req, res) => {
+  try {
+    const limit = req.query.limit || 10;
+
+    const response = await fetch(
+      `${AI_MODULE_URL}/trending/categories?limit=${limit}`
+    );
+
+    if (!response.ok) {
+      throw new Error('AI module request failed');
+    }
+
+    const data = await response.json();
+
+    res.status(200).json({
+      success: true,
+      data: data.categories || [],
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message || 'Failed to get trending categories',
+    });
+  }
+});
+
 // Section 5: Predict Product Demand
 // POST /api/v1/ai/demand/predict
 // Predicts future demand for a product based on historical data
