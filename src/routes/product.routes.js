@@ -9,7 +9,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { protect } = require('../middleware/auth');
+const { protect, optionalAuth } = require('../middleware/auth');
 const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
 const checkProductOwnership = require('../middleware/checkProductOwnership');
@@ -253,7 +253,7 @@ router.get('/suggestions', getSearchSuggestions);
  *       200:
  *         description: Search results
  */
-router.get('/search', searchProducts);
+router.get('/search', optionalAuth, searchProducts);
 
 // Section 7: Product Image Update (Protected)
 // PATCH /:id/image
@@ -351,7 +351,7 @@ router.get('/:id/similar',getSimilarProducts);
  *       404:
  *         description: Product not found
  */
-router.get('/:id', getProductById);
+router.get('/:id', optionalAuth, getProductById);
 
 router.patch(
   '/:id',

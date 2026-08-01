@@ -753,6 +753,13 @@ exports.getTrendingSearches = asyncHandler(async (req, res) => {
 //   4. Updates the user's interest score for this product's category
 // Why so many side effects: Every product view is a signal that feeds the recommendation engine. 
 // Incrementing views and updating scores on each view ensures the trending/recommendation data stays current in real-time.
+// FIX APPLIED: This route had no auth middleware at all, so req.user was
+// always undefined - meaning ALL FOUR side effects above never ran, for
+// any user, ever (not just #3/#4, which are gated behind req.user
+// specifically - incrementViews/updateProductScore only run because
+// they're inside the same `if (req.user)` block via trackProductView).
+// The route is now wrapped in optionalAuth (product.routes.js) so it stays
+// public for guests but populates req.user for logged-in viewers.
 
 exports.getProductById = async (req, res) => {
   try {
