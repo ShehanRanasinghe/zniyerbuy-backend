@@ -503,3 +503,63 @@ exports.getRecentProducts = async (limit = 10, shopId = null) => {
 
   return await query;
 };
+
+/**
+ * Get a user's recently viewed products, most-recent-first, deduplicated
+ * by product (a product viewed 5 times should appear once, at its most
+ * recent view time), capped at `limit`.
+ * @param {string} userId - User ID
+ * @param {number} [limit=10] - Number of distinct products to return
+ * @returns {Promise<{data, error}>}
+ * FIX APPLIED: This function did not exist at all, even though
+ * product.controller.js's getRecentlyViewedProducts called
+ * products.getRecentlyViewedProducts(req.user.id) - every request to
+ * GET /products/recently-viewed threw "products.getRecentlyViewedProducts
+ * is not a function" and 500'd.
+ */
+exports.getRecentlyViewedProducts = async (userId, limit = 10) => {
+  // Pull more raw rows than `limit` since the same product can appear many
+  // times (recently_viewed logs every view, not just the first); dedupe in
+  // JS, keeping only the most recent view per product, same pattern used
+  // by getTrendingSearches for search_history.
+  const { data: views, error } = await supabase
+    .from('recently_viewed')
+    .select('product_id, viewed_at')
+    .eq('user_id', userId)
+    .order('viewed_at', { ascending: false })
+    .limit(limit * 5);
+
+  if (error) return { data: [], error };
+
+  const seen = new Set();
+  const productIds = [];
+  for (const v of views || []) {
+    if (!v.product_id || seen.has(v.product_id)) continue;
+    seen.add(v.product_id);
+    productIds.push(v.product_id);
+    if (productIds.length >= limit) break;
+  }
+
+  if (productIds.length === 0) return { data: [], error: null };
+
+  const { data: products, error: productsError } = await supabase
+    .from('products')
+    .select(`
+      *,
+      shops (
+        id,
+        name,
+        address
+      )
+    `)
+    .in('id', productIds);
+
+  if (productsError) return { data: [], error: productsError };
+
+  // Supabase's .in() doesn't preserve the order we asked for, so re-sort
+  // to match the most-recently-viewed-first order from recently_viewed.
+  const byId = Object.fromEntries((products || []).map((p) => [p.id, p]));
+  const ordered = productIds.map((id) => byId[id]).filter(Boolean);
+
+  return { data: ordered, error: null };
+};

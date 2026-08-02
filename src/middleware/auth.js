@@ -68,3 +68,52 @@ exports.protect = async (req, res, next) => {
     });
   }
 };
+
+// Section 3: Optional Auth Middleware
+// Same token verification as `protect`, but never rejects the request when
+// no/invalid token is present — it just proceeds with req.user left
+// undefined. Use on routes that must stay public (guests can use them)
+// but still want to know who the caller is when they're logged in.
+// Why this was needed: GET /products/search has no auth middleware at all,
+// so req.user was always undefined even for logged-in users - the search
+// controller's `if (req.user && q?.trim())` check that logs to
+// search_history was therefore always false, and no search was EVER
+// recorded, for anyone, regardless of login state. That's the actual
+// reason search history never showed up on the search page - it's not a
+// display bug, nothing was ever being written.
+exports.optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return next();
+    }
+
+    const { user, error } = await auth.authenticateUser(authHeader);
+
+    if (error || !user) {
+      return next();
+    }
+
+    req.user = {
+      id: user.id,
+      firebase_uid: user.firebase_uid,
+      email: user.email,
+      full_name: user.full_name,
+      phone: user.phone,
+      role: user.role,
+      avatar_url: user.avatar_url,
+      address: user.address,
+      latitude: user.latitude,
+      longitude: user.longitude,
+      nearby_radius_km: user.nearby_radius_km,
+      created_at: user.created_at,
+    };
+
+    next();
+  } catch (err) {
+    // A bad/expired token on an optional-auth route should degrade to
+    // "treat as guest", not fail the request.
+    next();
+  }
+};

@@ -148,6 +148,10 @@ router.post(
  *               shop_id:
  *                 type: string
  *                 format: uuid
+ *               product_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Optional - links the review to a specific product
  *               rating:
  *                 type: integer
  *                 minimum: 1
