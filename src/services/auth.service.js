@@ -322,6 +322,19 @@ exports.authenticateUser = async (authHeader) => {
       };
     }
 
+    // Block deactivated accounts here, at the single chokepoint every
+    // protected request passes through — this is what actually enforces
+    // the admin panel's "deactivate user" toggle and the Profile page's
+    // "Delete Account" flow. Without this check, is_active was only ever
+    // written to the DB but never read, so a deactivated user could still
+    // log in and use the app normally.
+    if (user.is_active === false) {
+      return {
+        user: null,
+        error: { message: 'This account has been deactivated. Please contact support.', code: 'ACCOUNT_DEACTIVATED' },
+      };
+    }
+
     // Return user with essential fields
     return {
       user: {
@@ -336,6 +349,7 @@ exports.authenticateUser = async (authHeader) => {
         latitude: user.latitude,
         longitude: user.longitude,
         nearby_radius_km: user.nearby_radius_km,
+        is_active: user.is_active,
         created_at: user.created_at,
       },
       error: null,

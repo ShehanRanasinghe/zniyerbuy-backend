@@ -57,6 +57,7 @@ exports.protect = async (req, res, next) => {
       latitude: user.latitude,
       longitude: user.longitude,
       nearby_radius_km: user.nearby_radius_km,
+      is_active: user.is_active,
       created_at: user.created_at,
     };
 

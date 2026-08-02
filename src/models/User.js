@@ -61,6 +61,15 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       defaultValue: 5,
     },
+    // Soft-delete / account-status flag. Set to false by the admin panel's
+    // "deactivate" toggle, or by a shop owner using Profile > Delete Account.
+    // A deactivated user is blocked at login (see auth.service.js
+    // authenticateUser) until an admin reactivates the account.
+    is_active: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
   }, {
     tableName: 'users',
     underscored: true,
