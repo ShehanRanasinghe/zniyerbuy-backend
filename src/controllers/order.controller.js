@@ -379,9 +379,27 @@ exports.getOrder = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
 
+    // FIX APPLIED: Previously only selected('*') on `orders`, with no
+    // order_items join - so the seller's order detail page had no product
+    // names/quantities to show at all, and fell back to just displaying
+    // "N items in this order". Joining order_items here (same pattern
+    // already used in getMyOrders for the customer side) gives the
+    // frontend what it needs to list what was actually ordered.
     const { data, error } = await supabase
       .from('orders')
-      .select('*')
+      .select(`
+        *,
+        order_items (
+          id,
+          product_id,
+          discount_id,
+          product_name,
+          unit_price,
+          original_price,
+          quantity,
+          line_total
+        )
+      `)
       .eq('id', id)
       .single();
 
