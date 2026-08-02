@@ -16,6 +16,7 @@ const {
   generateInsights,
   getProductRecommendations,
   getTrendingProducts,
+  getTrendingCategories,
   predictDemand,
   getShopPredictions,
   checkAIHealth,
@@ -83,6 +84,22 @@ router.get(
 router.get(
   '/trending/products',
   getTrendingProducts
+);
+
+// GET /trending/categories - Get currently trending categories
+/**
+ * @swagger
+ * /ai/trending/categories:
+ *   get:
+ *     summary: Get AI-detected trending categories
+ *     tags: [AI]
+ *     responses:
+ *       200:
+ *         description: Currently trending categories
+ */
+router.get(
+  '/trending/categories',
+  getTrendingCategories
 );
 
 // Section 6: Demand Prediction Routes

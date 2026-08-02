@@ -44,10 +44,18 @@ exports.incrementFavorites = async (productId) => {
  * @returns {Promise<void>}
  */
 exports.updateUserInterest = async (userId, category) => {
-  await supabase.rpc('update_user_interest', {
+  const { error } = await supabase.rpc('update_user_interest', {
     p_user_id: userId,
     p_category: category,
   });
+  if (error) {
+    // Most likely cause: the update_user_interest RPC's `ON CONFLICT
+    // (user_id, category)` clause has no matching unique constraint to
+    // target - see the 20260731-add-user-interests-unique-constraint
+    // migration, which creates both the constraint and this function.
+    console.error('[updateUserInterest] RPC failed:', error.message);
+    throw error;
+  }
 };
 
 /**
@@ -128,24 +136,50 @@ exports.getInterestBasedRecommendations = async (userId, limit = 10) => {
  * @param {string} userId - User ID (optional)
  * @param {string} category - Product category (optional)
  * @returns {Promise<void>}
+ * FIX APPLIED: Each step below is now independently try/caught. The
+ * supabase-js client mostly returns {data, error} rather than throwing,
+ * and none of these calls previously checked `error`, so a Postgres-side
+ * failure (e.g. a missing RPC function, or update_user_interest's
+ * ON CONFLICT target not existing) was already being silently swallowed
+ * rather than surfaced - but a network-level failure calling out to
+ * Supabase does throw, and would propagate up through getProductById's
+ * await and turn the whole product detail page into a 500. Wrapping each
+ * step ensures a tracking failure of any kind can never break product
+ * viewing itself.
  */
 exports.trackProductView = async (productId, userId = null, category = null) => {
   // Increment view count
-  await exports.incrementViews(productId);
+  try {
+    await exports.incrementViews(productId);
+  } catch (err) {
+    console.error('[trackProductView] incrementViews failed:', err.message);
+  }
 
   // Update recommendation score
-  await exports.updateProductScore(productId);
+  try {
+    await exports.updateProductScore(productId);
+  } catch (err) {
+    console.error('[trackProductView] updateProductScore failed:', err.message);
+  }
 
   // Record in recently viewed if user is authenticated
   if (userId) {
-    await supabase.from('recently_viewed').insert({
-      user_id: userId,
-      product_id: productId,
-    });
+    try {
+      await supabase.from('recently_viewed').insert({
+        user_id: userId,
+        product_id: productId,
+      });
+    } catch (err) {
+      console.error('[trackProductView] recently_viewed insert failed:', err.message);
+    }
 
     // Update user interest if category is provided
     if (category) {
-      await exports.updateUserInterest(userId, category);
+      try {
+        await exports.updateUserInterest(userId, category);
+      } catch (err) {
+        console.error('[trackProductView] updateUserInterest failed:', err.message);
+      }
     }
   }
 };

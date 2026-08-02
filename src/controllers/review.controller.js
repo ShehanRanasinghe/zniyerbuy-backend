@@ -12,19 +12,24 @@ const { v4: uuidv4 } = require('uuid');
 
 // Section 2: Create Review
 // POST /api/v1/reviews
-// Creates a new review for a shop by the authenticated user.
+// Creates a new review for a shop (and, optionally, a specific product)
+// by the authenticated user.
 // Flow:
-//   1. Extract shop_id, rating, and comment from request body
+//   1. Extract shop_id, product_id, rating, and comment from request body
 //   2. Insert review with the authenticated user's ID
-//   3. Return the created review
-// FIX APPLIED: Previously called update_product_rating and update_recommendation_score RPCs with an undefined 'product_id' variable. 
-// Reviews are for shops (using shop_id), not products.
-// Removed the broken RPC calls — if you need to update shop ratings after a review, add an RPC that accepts shop_id instead.
+//   3. If product_id was provided, recalculate that product's average_rating
+//   4. Return the created review
+// FIX APPLIED: product_id is now accepted and stored. It was previously
+// dropped entirely, which meant reviews.product_id was always NULL and
+// GET /reviews/product/:productId (used by shop-web's Reviews page and
+// product detail pages) never returned anything, even for products that
+// had been rated on the mobile app.
 
 exports.createReview = asyncHandler(async (req, res) => {
   try {
     const {
       shop_id,
+      product_id,
       rating,
       comment,
     } = req.body;
@@ -35,7 +40,8 @@ exports.createReview = asyncHandler(async (req, res) => {
         {
           id: uuidv4(),
           user_id: req.user.id,
-          shop_id,
+          shop_id: shop_id || null,
+          product_id: product_id || null,
           rating,
           comment,
           created_at: new Date().toISOString(),
@@ -47,10 +53,25 @@ exports.createReview = asyncHandler(async (req, res) => {
 
     if (error) throw error;
 
-    // NOTE: Previously had broken RPC calls here using undefined 'product_id'. 
-    // Reviews are linked to shops via shop_id, not products. 
-    // The RPC functions update_product_rating and update_recommendation_score expect a product_id parameter.
-    // TODO: Consider creating an 'update_shop_rating' RPC that accepts shop_id to recalculate the shop's average rating after a new review is added.
+    // Recalculate the product's average_rating so shop-web and the mobile
+    // product page reflect the new review immediately.
+    if (product_id) {
+      const { data: productReviews, error: avgError } = await supabase
+        .from('reviews')
+        .select('rating')
+        .eq('product_id', product_id);
+
+      if (!avgError && productReviews && productReviews.length > 0) {
+        const avg =
+          productReviews.reduce((sum, r) => sum + Number(r.rating), 0) /
+          productReviews.length;
+
+        await supabase
+          .from('products')
+          .update({ average_rating: Math.round(avg * 10) / 10 })
+          .eq('id', product_id);
+      }
+    }
 
     res.status(201).json({
       success: true,
