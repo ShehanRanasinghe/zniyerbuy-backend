@@ -96,8 +96,15 @@ exports.getNearbyShops = async (req, res) => {
       });
     }
 
-    // Use shops service to find nearby shops
-    const { data, error } = await shops.getNearbyShops(latitude, longitude, radius);
+    // This is the mobile app's public "shops near me" discovery surface —
+    // a shop the admin hasn't verified yet (or has deactivated) shouldn't
+    // appear here. verifiedOnly/activeOnly default to false in the
+    // service (it's shared with internal/admin use), so this is the one
+    // place that has to opt in explicitly.
+    const { data, error } = await shops.getNearbyShops(latitude, longitude, radius, {
+      verifiedOnly: true,
+      activeOnly: true,
+    });
 
     if (error) throw error;
 
@@ -129,6 +136,20 @@ exports.getShopById = async (req, res) => {
     const { data, error } = await shops.getShopWithDetails(id);
 
     if (error) throw error;
+
+    // A shop the admin hasn't verified yet (or has deactivated) — and
+    // everything nested under it (products, deals/promotions) — should
+    // not be visible to the public, since this single response is what
+    // both the mobile shop-detail page and the "view shop" flow use. The
+    // shop's own owner and admins are exempted so the owner can still see
+    // and manage their shop before/while it's pending verification.
+    const isOwnerOrAdmin = !!req.user && (req.user.id === data?.owner_id || req.user.role === 'admin');
+    if (data && (data.is_verified === false || data.is_active === false) && !isOwnerOrAdmin) {
+      return res.status(404).json({
+        success: false,
+        error: 'Shop not found',
+      });
+    }
 
     res.status(200).json({
       success: true,

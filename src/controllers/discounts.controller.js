@@ -184,15 +184,38 @@ exports.createDeal = exports.createDiscount;
 
 exports.getDiscounts = async (req, res) => {
   try {
+    // When no shop_id is given, this is the public "Deals and Promotions"
+    // listing (mobile home page / browse) — hide deals belonging to shops
+    // the admin hasn't verified (or has deactivated). A shop_id-scoped
+    // call is a shop owner/admin managing that one shop's own deals, so it
+    // keeps seeing everything regardless of the shop's verification state.
+    const restrictToVerifiedShop = !req.query.shop_id;
+
     let query = supabase
       .from('discounts')
-      .select(`
+      .select(
+        restrictToVerifiedShop
+          ? `
+        *,
+        shops!inner (
+          id,
+          name,
+          is_verified,
+          is_active
+        )
+      `
+          : `
         *,
         shops (
           id,
           name
         )
-      `);
+      `
+      );
+
+    if (restrictToVerifiedShop) {
+      query = query.eq('shops.is_verified', true).eq('shops.is_active', true);
+    }
 
     if (req.query.shop_id) {
       query = query.eq('shop_id', req.query.shop_id);
@@ -242,13 +265,28 @@ exports.getDiscount = asyncHandler(async (req, res) => {
         *,
         shops (
           id,
-          name
+          name,
+          owner_id,
+          is_verified,
+          is_active
         )
       `)
       .eq('id', discountId)
       .single();
 
     if (error) throw error;
+
+    // Same rule as the product detail page: a deal from an unverified or
+    // deactivated shop shouldn't be reachable by direct link, only by the
+    // shop's own owner or an admin previewing/managing it.
+    const shop = data?.shops;
+    const isOwnerOrAdmin = !!req.user && (req.user.id === shop?.owner_id || req.user.role === 'admin');
+    if (shop && (shop.is_verified === false || shop.is_active === false) && !isOwnerOrAdmin) {
+      return res.status(404).json({
+        success: false,
+        error: 'Deal not found',
+      });
+    }
 
     res.status(200).json({
       success: true,

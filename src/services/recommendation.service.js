@@ -73,17 +73,23 @@ exports.getRecommendations = async (userId, limit = 10) => {
 
   const viewedIds = viewedProducts?.map((item) => item.product_id) || [];
 
-  // Build query
+  // Build query. shops!inner + is_verified/is_active filter keeps
+  // unverified or deactivated shops' products out of the personalized
+  // feed, same as the general browse/search/trending endpoints.
   let query = supabase
     .from('products')
     .select(`
       *,
-      shops (
+      shops!inner (
         id,
         name,
-        address
+        address,
+        is_verified,
+        is_active
       )
     `)
+    .eq('shops.is_verified', true)
+    .eq('shops.is_active', true)
     .order('recommendation_score', { ascending: false })
     .limit(limit);
 
@@ -117,12 +123,16 @@ exports.getInterestBasedRecommendations = async (userId, limit = 10) => {
     .from('products')
     .select(`
       *,
-      shops (
+      shops!inner (
         id,
         name,
-        address
+        address,
+        is_verified,
+        is_active
       )
     `)
+    .eq('shops.is_verified', true)
+    .eq('shops.is_active', true)
     .in('category', categories)
     .order('recommendation_score', { ascending: false })
     .limit(limit);
