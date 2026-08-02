@@ -298,12 +298,16 @@ exports.getHomeFeed = asyncHandler(async (req, res) => {
       .from('products')
       .select(`
         *,
-        shops (
+        shops!inner (
           id,
           name,
-          address
+          address,
+          is_verified,
+          is_active
         )
       `)
+      .eq('shops.is_verified', true)
+      .eq('shops.is_active', true)
       .order('recommendation_score', {
         ascending: false,
       })
@@ -407,12 +411,16 @@ exports.getRecentlyTrendingProducts = asyncHandler(async (req, res) => {
       .from('products')
       .select(`
         *,
-        shops (
+        shops!inner (
           id,
           name,
-          address
+          address,
+          is_verified,
+          is_active
         )
       `)
+      .eq('shops.is_verified', true)
+      .eq('shops.is_active', true)
       .gte('recommendation_score', 5)
       .order('recommendation_score', {
         ascending: false,
@@ -508,14 +516,18 @@ exports.searchProducts = async (req, res) => {
       .from('products')
       .select(`
         *,
-        shops (
+        shops!inner (
           id,
           name,
           latitude,
           longitude,
-          address
+          address,
+          is_verified,
+          is_active
         )
       `)
+      .eq('shops.is_verified', true)
+      .eq('shops.is_active', true)
       .or(`name.ilike.%${q || ''}%,category.ilike.%${q || ''}%,description.ilike.%${q || ''}%`);
 
     if (category) {
@@ -597,14 +609,18 @@ exports.getNearbyProducts = asyncHandler(async (req, res) => {
       .from('products')
       .select(`
         *,
-        shops (
+        shops!inner (
           id,
           name,
           latitude,
           longitude,
-          address
+          address,
+          is_verified,
+          is_active
         )
       `)
+      .eq('shops.is_verified', true)
+      .eq('shops.is_active', true)
       .eq('is_available', true);
 
     if (error) throw error;
@@ -824,6 +840,21 @@ exports.getProductById = async (req, res) => {
     const { data, error } = await products.getProductById(id, true);
 
     if (error) throw error;
+
+    // A product from an unverified (or admin-deactivated) shop shouldn't
+    // be reachable even via a direct/deep link — it won't appear in any
+    // browse/search/trending list, but without this check the raw
+    // product ID would still resolve. The shop's own owner and admins are
+    // exempted so they can still preview/manage the listing before it's
+    // approved.
+    const shop = data?.shops;
+    const isOwnerOrAdmin = !!req.user && (req.user.id === shop?.owner_id || req.user.role === 'admin');
+    if (shop && (shop.is_verified === false || shop.is_active === false) && !isOwnerOrAdmin) {
+      return res.status(404).json({
+        success: false,
+        error: 'Product not found',
+      });
+    }
 
     // Track the view after successful fetch — pass category for interest score update
     if (req.user) {

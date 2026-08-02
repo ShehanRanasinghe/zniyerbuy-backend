@@ -8,7 +8,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { protect } = require('../middleware/auth');
+const { protect, optionalAuth } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 
 const authorize = require('../middleware/authorize');
@@ -145,7 +145,7 @@ router.patch(
  *       404:
  *         description: Shop not found
  */
-router.get('/:id', getShopById);
+router.get('/:id', optionalAuth, getShopById);
 
 /**
  * @swagger

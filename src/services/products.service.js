@@ -67,7 +67,10 @@ exports.getProductById = async (productId, includeShop = false) => {
         name,
         address,
         phone,
-        city
+        city,
+        owner_id,
+        is_verified,
+        is_active
       )
     `
     : '*';
@@ -132,15 +135,44 @@ exports.getAllProducts = async (options = {}) => {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
+  // Hide products belonging to shops the admin hasn't verified yet (or has
+  // deactivated) from the general marketplace listing. This is the
+  // endpoint the mobile app's "all products" browse screen calls with no
+  // shop_id, so it's the main surface customers use to discover products -
+  // an unverified shop shouldn't appear here.
+  //
+  // Exception: when a specific shop_id is requested, this is a shop
+  // owner/admin dashboard managing that one shop's own listings (or an
+  // internal call), so it should keep seeing all of its products
+  // regardless of verification status - a shop can't prepare its catalog
+  // for review if it can't see its own unverified products.
+  const restrictToVerifiedShop = !shop_id;
+
   let query = supabase
     .from('products')
-    .select(`
+    .select(
+      restrictToVerifiedShop
+        ? `
+      *,
+      shops!inner (
+        id,
+        name,
+        is_verified,
+        is_active
+      )
+    `
+        : `
       *,
       shops (
         id,
         name
       )
-    `);
+    `
+    );
+
+  if (restrictToVerifiedShop) {
+    query = query.eq('shops.is_verified', true).eq('shops.is_active', true);
+  }
 
   if (shop_id) {
     query = query.eq('shop_id', shop_id);
@@ -285,11 +317,15 @@ exports.searchProducts = async (query, options = {}) => {
     .from('products')
     .select(`
       *,
-      shops (
+      shops!inner (
         id,
-        name
+        name,
+        is_verified,
+        is_active
       )
     `)
+    .eq('shops.is_verified', true)
+    .eq('shops.is_active', true)
     .ilike('name', `%${query}%`);
 
   if (category) {
@@ -317,12 +353,16 @@ exports.getTrendingProducts = async (limit = 10) => {
     .from('products')
     .select(`
       *,
-      shops (
+      shops!inner (
         id,
         name,
-        address
+        address,
+        is_verified,
+        is_active
       )
     `)
+    .eq('shops.is_verified', true)
+    .eq('shops.is_active', true)
     .order('average_rating', { ascending: false })
     .order('favorites_count', { ascending: false })
     .order('views', { ascending: false })
@@ -349,12 +389,16 @@ exports.getSimilarProducts = async (productId, limit = 10) => {
     .from('products')
     .select(`
       *,
-      shops (
+      shops!inner (
         id,
         name,
-        address
+        address,
+        is_verified,
+        is_active
       )
     `)
+    .eq('shops.is_verified', true)
+    .eq('shops.is_active', true)
     .eq('category', product.category)
     .neq('id', productId)
     .order('recommendation_score', { ascending: false })
