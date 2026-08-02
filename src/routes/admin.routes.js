@@ -19,8 +19,9 @@ const {
   updateShopStatus,
   deleteShop,
   getAllProducts,
+  getProductFilters,
   flagProduct,
-  deleteProduct,
+  unflagProduct,
   getDashboardStats,
   getBreakdownData,
   getTrendData,
@@ -254,9 +255,32 @@ router.get('/products', protect, authorize('admin'), getAllProducts);
 
 /**
  * @swagger
- * /admin/products/{id}/flag:
- *   patch:
- *     summary: Flag a product for review
+ * /admin/products/filters:
+ *   get:
+ *     summary: Get shop and category filter options, sourced from the database
+ *     tags: [Admin - Product Management]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Shops and categories available for filtering
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin only
+ */
+router.get('/products/filters', protect, authorize('admin'), getProductFilters);
+
+/**
+ * @swagger
+ * /admin/products/{id}:
+ *   delete:
+ *     summary: Soft-delete a product (flags it and hides it from its shop)
+ *     description: >
+ *       Does not remove the row from the products table. Instead inserts a
+ *       record into flagged_products (linked to the product and its shop)
+ *       and sets is_available to false so it disappears from the shop and
+ *       storefront while remaining fully recoverable.
  *     tags: [Admin - Product Management]
  *     security:
  *       - bearerAuth: []
@@ -268,29 +292,29 @@ router.get('/products', protect, authorize('admin'), getAllProducts);
  *           type: string
  *         description: Product ID
  *     requestBody:
- *       required: true
+ *       required: false
  *       content:
  *         application/json:
  *           schema:
  *             type: object
  *             properties:
- *               is_flagged:
- *                 type: boolean
+ *               reason:
+ *                 type: string
  *     responses:
  *       200:
- *         description: Product flagged status updated
+ *         description: Product flagged and hidden
  *       401:
  *         description: Unauthorized
  *       403:
  *         description: Forbidden - Admin only
  */
-router.patch('/products/:id/flag', protect, authorize('admin'), flagProduct);
+router.delete('/products/:id', protect, authorize('admin'), flagProduct);
 
 /**
  * @swagger
- * /admin/products/{id}:
- *   delete:
- *     summary: Delete a product
+ * /admin/products/{id}/restore:
+ *   patch:
+ *     summary: Restore a previously flagged (soft-deleted) product
  *     tags: [Admin - Product Management]
  *     security:
  *       - bearerAuth: []
@@ -303,13 +327,13 @@ router.patch('/products/:id/flag', protect, authorize('admin'), flagProduct);
  *         description: Product ID
  *     responses:
  *       200:
- *         description: Product deleted
+ *         description: Product restored
  *       401:
  *         description: Unauthorized
  *       403:
  *         description: Forbidden - Admin only
  */
-router.delete('/products/:id', protect, authorize('admin'), deleteProduct);
+router.patch('/products/:id/restore', protect, authorize('admin'), unflagProduct);
 
 // Admin Deal Management Routes
 /**
