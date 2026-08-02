@@ -295,27 +295,37 @@ exports.deleteShop = asyncHandler(async (req, res) => {
 
 // Section 10: Get All Products (Admin)
 // GET /api/v1/admin/products
-// Returns all products for admin monitoring
+// Returns all products with their shop, for admin monitoring. Also embeds
+// flagged_products (reverse relationship via flagged_products.product_id)
+// so we can tell whether a product has been soft-deleted by an admin
+// (flagged + hidden) vs simply turned off by the shop owner.
 exports.getAllProducts = asyncHandler(async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, shop_id, category, price, is_available, shops!shop_id(name)')
+      .select('id, name, shop_id, category, price, is_available, created_at, shops!shop_id(id, name), flagged_products(id)')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    const formattedProducts = data.map((product, index) => ({
-      id: product.id,
-      name: product.name || `Product ${index + 1}`,
-      shop: product.shops?.name || `Shop ${index + 1}`,
-      category: product.category || 'General',
-      price: `LKR ${Number(product.price || 0).toLocaleString()}`,
-      status: !product.is_available ? 'Inactive' : 'Active',
-      initials: product.name ? product.name.split(' ')[0].substring(0, 2).toUpperCase() : 'PR',
-      color: '#1a1a1a',
-      textColor: '#888888',
-    }));
+    const formattedProducts = data.map((product, index) => {
+      const isFlagged = Array.isArray(product.flagged_products) && product.flagged_products.length > 0;
+      const status = isFlagged ? 'Flagged' : (product.is_available ? 'Active' : 'Inactive');
+
+      return {
+        id: product.id,
+        name: product.name || `Product ${index + 1}`,
+        shopId: product.shop_id,
+        shop: product.shops?.name || `Shop ${index + 1}`,
+        category: product.category || 'General',
+        price: `LKR ${Number(product.price || 0).toLocaleString()}`,
+        status,
+        isFlagged,
+        initials: product.name ? product.name.split(' ')[0].substring(0, 2).toUpperCase() : 'PR',
+        color: '#1a1a1a',
+        textColor: '#888888',
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -329,17 +339,72 @@ exports.getAllProducts = asyncHandler(async (req, res) => {
   }
 });
 
-// Section 11: Flag Product (Admin)
-// PATCH /api/v1/admin/products/:id/flag
-// Toggles product availability (since is_flagged column doesn't exist in schema)
+// Section 10b: Get Product Filters (Admin)
+// GET /api/v1/admin/products/filters
+// Powers the shop and category dropdowns on the Product Monitoring page.
+// Both lists come straight from the database (not a hardcoded array), so
+// new shops or categories show up automatically without a frontend change.
+exports.getProductFilters = asyncHandler(async (req, res) => {
+  try {
+    const [shopsResult, productsResult] = await Promise.all([
+      supabase.from('shops').select('id, name').order('name', { ascending: true }),
+      supabase.from('products').select('category'),
+    ]);
+
+    if (shopsResult.error) throw shopsResult.error;
+    if (productsResult.error) throw productsResult.error;
+
+    const categories = [...new Set(
+      (productsResult.data || []).map((p) => p.category).filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        shops: shopsResult.data || [],
+        categories,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
+// Section 11: Soft Delete Product (Admin)
+// DELETE /api/v1/admin/products/:id
+// This never removes the row from `products`. It records a
+// flagged_products entry (linked to both the product and its shop, so
+// it's easy to audit per-shop) and hides the product from the shop by
+// setting is_available to false. Nothing is unrecoverably deleted here.
 exports.flagProduct = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
-    const { is_available } = req.body;
+    const { reason } = req.body || {};
+    const adminId = req.user?.id || null;
+
+    const { data: product, error: productError } = await supabase
+      .from('products')
+      .select('id, shop_id')
+      .eq('id', id)
+      .single();
+
+    if (productError) throw productError;
+
+    const { error: flagError } = await supabase
+      .from('flagged_products')
+      .upsert(
+        { product_id: id, shop_id: product.shop_id, flagged_by: adminId, reason: reason || null },
+        { onConflict: 'product_id' }
+      );
+
+    if (flagError) throw flagError;
 
     const { data, error } = await supabase
       .from('products')
-      .update({ is_available })
+      .update({ is_available: false })
       .eq('id', id)
       .select()
       .single();
@@ -348,7 +413,7 @@ exports.flagProduct = asyncHandler(async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Product ${is_available ? 'activated' : 'deactivated'} successfully`,
+      message: 'Product flagged and hidden from shop successfully',
       data,
     });
   } catch (err) {
@@ -359,16 +424,24 @@ exports.flagProduct = asyncHandler(async (req, res) => {
   }
 });
 
-// Section 12: Delete Product (Admin)
-// DELETE /api/v1/admin/products/:id
-// Permanently deletes a product
-exports.deleteProduct = asyncHandler(async (req, res) => {
+// Section 12: Restore Flagged Product (Admin)
+// PATCH /api/v1/admin/products/:id/restore
+// Reverses a soft delete: removes the flagged_products record and makes
+// the product available to the shop again.
+exports.unflagProduct = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
 
+    const { error: unflagError } = await supabase
+      .from('flagged_products')
+      .delete()
+      .eq('product_id', id);
+
+    if (unflagError) throw unflagError;
+
     const { data, error } = await supabase
       .from('products')
-      .delete()
+      .update({ is_available: true })
       .eq('id', id)
       .select()
       .single();
@@ -377,7 +450,7 @@ exports.deleteProduct = asyncHandler(async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Product deleted successfully',
+      message: 'Product restored successfully',
       data,
     });
   } catch (err) {
