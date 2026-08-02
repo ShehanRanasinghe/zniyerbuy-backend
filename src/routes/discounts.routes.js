@@ -8,7 +8,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { protect } = require('../middleware/auth');
+const { protect, optionalAuth } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const checkDiscountOwnership = require('../middleware/checkDiscountOwnership');
 
@@ -177,7 +177,7 @@ router.get('/', getDiscounts);
  *       404:
  *         description: Deal not found
  */
-router.get('/:dealId', require('../controllers/discounts.controller').getDiscount);
+router.get('/:dealId', optionalAuth, require('../controllers/discounts.controller').getDiscount);
 router.patch('/:dealId', protect, checkDiscountOwnership, updateDiscountValidator, validate, require('../controllers/discounts.controller').updateDiscount);
 router.delete('/:dealId', protect, checkDiscountOwnership, require('../controllers/discounts.controller').deleteDiscount);
 
