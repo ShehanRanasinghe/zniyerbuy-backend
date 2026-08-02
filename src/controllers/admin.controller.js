@@ -393,35 +393,29 @@ exports.deleteProduct = asyncHandler(async (req, res) => {
 // Returns aggregated statistics for the analytics dashboard
 exports.getDashboardStats = asyncHandler(async (req, res) => {
   try {
-    // Count users
-    const { count: userCount } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true });
-
-    // Count shops
-    const { count: shopCount } = await supabase
-      .from('shops')
-      .select('*', { count: 'exact', head: true });
-
-    // Count products
-    const { count: productCount } = await supabase
-      .from('products')
-      .select('*', { count: 'exact', head: true });
-
+    // FIX APPLIED: userCount/shopCount/productCount previously ran as 3
+    // separate sequential awaits (3 full network round-trips to Supabase,
+    // one after another) BEFORE the Promise.all below even started - a
+    // major contributor to the slow dashboard load. All counts now run in
+    // a single parallel batch. Also dropped the notifications/interactions
+    // counts entirely (2 fewer queries) since those stat cards were
+    // removed from the dashboard.
     const [
+      usersResult,
+      shopsResult,
+      productsResult,
       dealsResult,
       favoritesResult,
       reviewsResult,
-      notificationsResult,
-      interactionsResult,
       recentlyViewedResult,
       userInterestsResult,
     ] = await Promise.all([
+      supabase.from('users').select('*', { count: 'exact', head: true }),
+      supabase.from('shops').select('*', { count: 'exact', head: true }),
+      supabase.from('products').select('*', { count: 'exact', head: true }),
       supabase.from('discounts').select('*', { count: 'exact', head: true }).eq('is_active', true),
       supabase.from('favorites').select('*', { count: 'exact', head: true }),
       supabase.from('reviews').select('*', { count: 'exact', head: true }),
-      supabase.from('notifications').select('*', { count: 'exact', head: true }),
-      supabase.from('user_interactions').select('*', { count: 'exact', head: true }),
       supabase.from('recently_viewed').select('*', { count: 'exact', head: true }),
       supabase.from('user_interests').select('*', { count: 'exact', head: true }),
     ]);
@@ -429,14 +423,12 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
-        totalUsers: userCount || 0,
-        totalShops: shopCount || 0,
-        totalProducts: productCount || 0,
+        totalUsers: usersResult.count || 0,
+        totalShops: shopsResult.count || 0,
+        totalProducts: productsResult.count || 0,
         activeDeals: dealsResult.count || 0,
         totalFavorites: favoritesResult.count || 0,
         totalReviews: reviewsResult.count || 0,
-        totalNotifications: notificationsResult.count || 0,
-        totalInteractions: interactionsResult.count || 0,
         totalRecentlyViewed: recentlyViewedResult.count || 0,
         totalUserInterests: userInterestsResult.count || 0,
       },
@@ -449,17 +441,58 @@ exports.getDashboardStats = asyncHandler(async (req, res) => {
   }
 });
 
+// Section 13b: Get Breakdown Data (Admin)
+// GET /api/v1/admin/breakdown
+// Powers the dashboard's 4 new breakdown charts. Uses Postgres RPC
+// aggregation functions (see migration
+// 20260803090000-add-admin-dashboard-breakdown-rpcs.js) rather than
+// fetching raw rows and grouping them in Node - GROUP BY + COUNT runs
+// once in the database and returns only the aggregated rows.
+exports.getBreakdownData = asyncHandler(async (req, res) => {
+  try {
+    const [usersByRole, productsByCategory, ordersByShop, reviewsByShop] = await Promise.all([
+      supabase.rpc('admin_users_by_role'),
+      supabase.rpc('admin_products_by_category'),
+      supabase.rpc('admin_orders_by_shop', { result_limit: 10 }),
+      supabase.rpc('admin_reviews_by_shop', { result_limit: 10 }),
+    ]);
+
+    if (usersByRole.error) throw usersByRole.error;
+    if (productsByCategory.error) throw productsByCategory.error;
+    if (ordersByShop.error) throw ordersByShop.error;
+    if (reviewsByShop.error) throw reviewsByShop.error;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        usersByRole: usersByRole.data || [],
+        productsByCategory: productsByCategory.data || [],
+        ordersByShop: ordersByShop.data || [],
+        reviewsByShop: reviewsByShop.data || [],
+      },
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
 // Section 14: Get Trend Data (Admin)
 // GET /api/v1/admin/trends
+// FIX APPLIED: Previously also fetched deals (with a `views_count` column
+// that doesn't exist on the discounts table at all - silently returned no
+// data) and user_interactions, to feed the since-removed Engagement Trends
+// chart. Trimmed to just users+products, which is all the remaining
+// Growth Trends chart needs - fewer queries, faster load.
 exports.getTrendData = async (req, res) => {
   try {
     const now = new Date();
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-    const [usersData, productsData, dealsData, interactionsData] = await Promise.all([
+    const [usersData, productsData] = await Promise.all([
       supabase.from('users').select('created_at').gte('created_at', sixMonthsAgo.toISOString()),
       supabase.from('products').select('created_at').gte('created_at', sixMonthsAgo.toISOString()),
-      supabase.from('discounts').select('created_at, views_count').gte('created_at', sixMonthsAgo.toISOString()),
-      supabase.from('user_interactions').select('created_at, action_type').gte('created_at', sixMonthsAgo.toISOString()),
     ]);
     const months = [];
     for (let i = 5; i >= 0; i--) {
@@ -467,7 +500,7 @@ exports.getTrendData = async (req, res) => {
       months.push({
         key: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'),
         label: d.toLocaleString('default', { month: 'short' }),
-        newUsers: 0, newProducts: 0, dealViews: 0, purchases: 0, interactions: 0,
+        newUsers: 0, newProducts: 0,
       });
     }
     const getMonthKey = (dateStr) => {
@@ -476,11 +509,6 @@ exports.getTrendData = async (req, res) => {
     };
     (usersData.data || []).forEach((r) => { const m = months.find((mo) => mo.key === getMonthKey(r.created_at)); if (m) m.newUsers++; });
     (productsData.data || []).forEach((r) => { const m = months.find((mo) => mo.key === getMonthKey(r.created_at)); if (m) m.newProducts++; });
-    (dealsData.data || []).forEach((r) => { const m = months.find((mo) => mo.key === getMonthKey(r.created_at)); if (m) m.dealViews += r.views_count || 0; });
-    (interactionsData.data || []).forEach((r) => {
-      const m = months.find((mo) => mo.key === getMonthKey(r.created_at));
-      if (m) { m.interactions++; if (r.action_type === 'purchase') m.purchases++; }
-    });
     res.status(200).json({ success: true, data: months });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

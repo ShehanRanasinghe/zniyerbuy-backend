@@ -22,6 +22,7 @@ const {
   flagProduct,
   deleteProduct,
   getDashboardStats,
+  getBreakdownData,
   getTrendData,
   getAllDeals,
   toggleDeal,
@@ -485,6 +486,24 @@ router.delete('/notifications/:id', protect, authorize('admin'), deleteNotificat
  *         description: Forbidden - Admin only
  */
 router.get('/stats', protect, authorize('admin'), getDashboardStats);
+
+/**
+ * @swagger
+ * /admin/breakdown:
+ *   get:
+ *     summary: Get breakdown data (users by role, products by category, orders by shop, reviews by shop)
+ *     tags: [Admin - Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Breakdown data
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin only
+ */
+router.get('/breakdown', protect, authorize('admin'), getBreakdownData);
 
 /**
  * @swagger
